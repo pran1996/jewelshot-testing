@@ -54,7 +54,8 @@ button:hover{background:#2ea043}</style></head>
 app.post('/login', express.urlencoded({ extended: false }), (req, res) => {
   if (req.body.username === AUTH_USER && req.body.password === AUTH_PASS) {
     const token = generateToken();
-    res.setHeader('Set-Cookie', `${AUTH_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${AUTH_TOKEN_TTL / 1000}`);
+    const secure = req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : '';
+    res.setHeader('Set-Cookie', `${AUTH_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${AUTH_TOKEN_TTL / 1000}${secure}`);
     return res.redirect('/');
   }
   res.redirect('/login?error=1');
@@ -63,7 +64,10 @@ app.post('/login', express.urlencoded({ extended: false }), (req, res) => {
 // Auth middleware — protect everything except /login
 app.use((req, res, next) => {
   if (req.path === '/login') return next();
-  if (!isAuthed(req)) return res.redirect('/login');
+  if (!isAuthed(req)) {
+    if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized — please log in again' });
+    return res.redirect('/login');
+  }
   next();
 });
 
