@@ -795,6 +795,14 @@ async function generateVisual(idx, vk, prompt, temperature, seed, skipQA = false
   const mimeType = parts[0].match(/:(.*?);/)[1];
   const imageBase64 = parts[1];
 
+  // Helper: get the correct vis object for writing results (handles tab switches)
+  function getVis() {
+    if (_activeTabId === _initiatingTab) return slots[idx]?.visuals?.[vk];
+    // Tab switched — write to saved tab state
+    const tab = _tabs[_initiatingTab];
+    return tab?.slots?.[idx]?.visuals?.[vk] || null;
+  }
+
   try {
     const res = await fetch('/api/chat', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -802,15 +810,17 @@ async function generateVisual(idx, vk, prompt, temperature, seed, skipQA = false
     });
     const data = await res.json();
     if (!res.ok || !data.images?.length) throw new Error(data.error || data.details || 'No image');
+    
+    const targetVis = getVis();
+    if (targetVis) {
+      const img = data.images[0];
+      targetVis.resultBase64 = img.data; targetVis.resultMimeType = img.mimeType;
+      targetVis.resultText = data.text || ''; targetVis.thoughtSignature = data.thoughtSignature || null;
+      targetVis.resultImages = data.images; targetVis.done = true; targetVis.generating = false;
+      if (data.sessionId) targetVis.sessionId = data.sessionId;
+    }
     if (_activeTabId === _initiatingTab) {
       handleVisualResult(idx, vk, data);
-    } else {
-      // Store result in vis object (still referenced by saved tab state)
-      const img = data.images[0];
-      vis.resultBase64 = img.data; vis.resultMimeType = img.mimeType;
-      vis.resultText = data.text || ''; vis.thoughtSignature = data.thoughtSignature || null;
-      vis.resultImages = data.images; vis.done = true; vis.generating = false;
-      if (data.sessionId) vis.sessionId = data.sessionId;
     }
 
     if (false /* QA DISABLED */ && !skipQA) {
@@ -818,12 +828,14 @@ async function generateVisual(idx, vk, prompt, temperature, seed, skipQA = false
       if (qaRounds > 0) { try { await runQALoop(idx, vk, qaRounds); } catch(e) { showToast(`QA ${VK_LABELS[vk]}#${idx+1}: ${e.message}`); } }
     }
   } catch(err) {
-    vis.error = true; vis.generating = false;
+    const targetVis = getVis();
+    if (targetVis) { targetVis.error = true; targetVis.generating = false; }
     if (_activeTabId === _initiatingTab) setVisualState(idx, vk, 'error');
     showToast(`${VK_LABELS[vk]} #${idx+1}: ${err.message}`);
   } finally {
     clientRelease();
-    vis.generating = false;
+    const targetVis = getVis();
+    if (targetVis) targetVis.generating = false;
     if (_activeTabId === _initiatingTab) updateSlotAggStatus(idx);
     if (_batchRunning) { _batchDone++; updateBatchProgress(); }
   }
@@ -1526,9 +1538,11 @@ function cloneTab() {
   const clone = JSON.parse(JSON.stringify(src));
   clone.name = src.name + ' (copy)';
   // JSON.parse loses File objects — copy them manually
+  // Clear visuals so cloned tab starts fresh (keeps sketches, clears outputs)
   for (let i = 0; i < clone.slotCount; i++) {
     if (clone.slots[i] && src.slots[i]) {
       clone.slots[i].file = src.slots[i].file;
+      VK_ALL.forEach(vk => { clone.slots[i].visuals[vk] = newVis(); });
     }
   }
   _tabs[newId] = clone;
