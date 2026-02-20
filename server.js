@@ -16,23 +16,30 @@ if (!API_KEY) {
   process.exit(1);
 }
 
-// ── Simple Auth ─────────────────────────────────────────────────────
+// ── Simple Auth (HMAC-signed cookie — survives server restarts) ─────
 const AUTH_USER = process.env.AUTH_USER || 'pranshu';
 const AUTH_PASS = process.env.AUTH_PASS || 'password';
 const AUTH_COOKIE = 'sketch_auth';
 const AUTH_TOKEN_TTL = 24 * 60 * 60 * 1000; // 24h
-const authTokens = new Set();
+const AUTH_SECRET = process.env.AUTH_SECRET || API_KEY.slice(0, 16); // signing key
 
 function generateToken() {
-  const token = crypto.randomBytes(32).toString('hex');
-  authTokens.add(token);
-  return token;
+  const exp = Date.now() + AUTH_TOKEN_TTL;
+  const payload = `${AUTH_USER}:${exp}`;
+  const sig = crypto.createHmac('sha256', AUTH_SECRET).update(payload).digest('hex');
+  return `${payload}:${sig}`;
 }
 
 function isAuthed(req) {
   const cookie = req.headers.cookie || '';
   const match = cookie.match(new RegExp(`${AUTH_COOKIE}=([^;]+)`));
-  return match && authTokens.has(match[1]);
+  if (!match) return false;
+  const parts = match[1].split(':');
+  if (parts.length !== 3) return false;
+  const [user, exp, sig] = parts;
+  if (Date.now() > parseInt(exp)) return false;
+  const expected = crypto.createHmac('sha256', AUTH_SECRET).update(`${user}:${exp}`).digest('hex');
+  return sig === expected;
 }
 
 // Login page
