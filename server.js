@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const path = require('path');
 const crypto = require('crypto');
@@ -10,7 +10,11 @@ const PORT = process.env.PORT || 3456;
 app.use(express.json({ limit: '50mb' }));
 
 const API_KEY = process.env.GEMINI_API_KEY;
-if (!API_KEY) { console.error('❌ GEMINI_API_KEY env var is required'); process.exit(1); }
+if (!API_KEY) {
+  console.error('❌ GEMINI_API_KEY env var is required');
+  console.error('Available env keys:', Object.keys(process.env).filter(k => !k.startsWith('npm_')).join(', '));
+  process.exit(1);
+}
 
 // ── Simple Auth ─────────────────────────────────────────────────────
 const AUTH_USER = process.env.AUTH_USER || 'pranshu';
