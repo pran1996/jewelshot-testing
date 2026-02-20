@@ -61,9 +61,9 @@ app.post('/login', express.urlencoded({ extended: false }), (req, res) => {
   res.redirect('/login?error=1');
 });
 
-// Auth middleware — protect everything except /login
+// Auth middleware — protect everything except /login and health/logs
 app.use((req, res, next) => {
-  if (req.path === '/login') return next();
+  if (req.path === '/login' || req.path === '/api/health' || req.path === '/api/logs') return next();
   if (!isAuthed(req)) {
     if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized — please log in again' });
     return res.redirect('/login');
