@@ -316,6 +316,28 @@ app.get('/api/sessions', (req, res) => {
   res.json({ count: chatSessions.size, sessions });
 });
 
+// ── Health / debug endpoint ──────────────────────────────────────────
+const logBuffer = [];
+const MAX_LOG_LINES = 200;
+const origLog = console.log, origErr = console.error;
+console.log = (...args) => { const line = args.map(String).join(' '); logBuffer.push({ t: Date.now(), l: 'info', m: line }); if (logBuffer.length > MAX_LOG_LINES) logBuffer.shift(); origLog(...args); };
+console.error = (...args) => { const line = args.map(String).join(' '); logBuffer.push({ t: Date.now(), l: 'error', m: line }); if (logBuffer.length > MAX_LOG_LINES) logBuffer.shift(); origErr(...args); };
+
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    uptime: Math.round(process.uptime()) + 's',
+    memory: { heap: getHeapMB() + 'MB', rss: Math.round(process.memoryUsage().rss / 1024 / 1024) + 'MB' },
+    sessions: chatSessions.size,
+  });
+});
+
+app.get('/api/logs', (req, res) => {
+  const since = req.query.since ? parseInt(req.query.since) : 0;
+  const lines = logBuffer.filter(l => l.t > since);
+  res.json({ count: lines.length, logs: lines });
+});
+
 // ── Graceful shutdown ───────────────────────────────────────────────
 let server;
 function shutdown(signal) {
