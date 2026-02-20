@@ -108,21 +108,29 @@ function logMemory(label) {
 // ── Concurrency limiter ─────────────────────────────────────────────
 let _active = 0;
 const _queue = [];
+const MAX_QUEUE = 12; // max waiting requests before rejecting
 
 function acquireSlot() {
   if (_active < CONFIG.maxConcurrent) {
     _active++;
+    console.log(`[Queue] acquired (${_active}/${CONFIG.maxConcurrent} active, ${_queue.length} waiting)`);
     return Promise.resolve();
   }
+  if (_queue.length >= MAX_QUEUE) {
+    return Promise.reject(Object.assign(new Error(`Server busy — ${_queue.length} requests queued. Try again shortly.`), { status: 503 }));
+  }
+  console.log(`[Queue] waiting (${_active}/${CONFIG.maxConcurrent} active, ${_queue.length + 1} in queue)`);
   return new Promise(resolve => _queue.push(resolve));
 }
 
 function releaseSlot() {
   if (_queue.length > 0) {
     const next = _queue.shift();
+    console.log(`[Queue] dequeued (${_active}/${CONFIG.maxConcurrent} active, ${_queue.length} waiting)`);
     next();
   } else {
     _active--;
+    console.log(`[Queue] released (${_active}/${CONFIG.maxConcurrent} active)`);
   }
 }
 
@@ -288,6 +296,7 @@ app.post('/api/chat', memoryGuard, async (req, res) => {
 
     // ── Extract and return results ──
     const result = extractResults(response);
+    console.log(`[Complete] session=${sid.substring(0,8)}… images=${result.images.length} text=${(result.text||'').substring(0,60)}`);
 
     if (result.images.length === 0) {
       throw new Error(result.text || 'No image generated');
@@ -302,7 +311,7 @@ app.post('/api/chat', memoryGuard, async (req, res) => {
     });
 
   } catch (err) {
-    console.error('[Chat Error]', err.status || '', err.message);
+    console.error('[Chat Error]', err.status || '', err.message, err.details || '');
     res.status(err.status || 500).json({ error: err.message, details: err.details });
   }
 });
