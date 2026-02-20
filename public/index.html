@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jewelry Sketch → Studio</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+  <style>
+    :root {
+      --bg: #0a0a0a; --surface: #141414; --surface-2: #1e1e1e; --surface-3: #252525;
+      --border: #2a2a2a; --border-hover: #3a3a3a;
+      --text: #e8e8e8; --text-muted: #888; --text-dim: #555;
+      --accent: #c9a55a; --accent-hover: #dbb76a; --accent-glow: rgba(201,165,90,0.12);
+      --danger: #e55; --success: #4c8; --blue: #5b9bd5; --radius: 10px;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+    /* ── Header ──────────────────────────────────────────── */
+    .header { padding:20px 28px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .header h1 { font-size:18px; font-weight:600; } .header h1 span { color:var(--accent); }
+    .badge { font-size:10px; background:var(--accent-glow); color:var(--accent); padding:3px 10px; border-radius:20px; border:1px solid rgba(201,165,90,0.2); }
+    .header-right { display:flex; align-items:center; gap:12px; }
+    .slot-count-label { font-size:13px; color:var(--text-muted); }
+    .slot-count-input { width:50px; padding:6px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:14px; text-align:center; }
+
+    /* ── Global controls ─────────────────────────────────── */
+    .global-bar { padding:16px 28px; border-bottom:1px solid var(--border); background:var(--surface); display:flex; flex-direction:column; gap:12px; }
+    .global-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .global-bar label { font-size:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+    .master-prompt-area { width:100%; }
+    .master-prompt-area textarea { width:100%; padding:10px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:13px; resize:vertical; min-height:80px; font-family:inherit; line-height:1.5; }
+    .master-prompt-area textarea:focus { border-color:var(--accent); outline:none; }
+    .master-prompt-area textarea::placeholder { color:var(--text-dim); }
+    .var-hint { font-size:10px; color:var(--text-dim); margin-top:4px; }
+    .var-hint code { background:var(--surface-3); padding:1px 5px; border-radius:3px; color:var(--accent); font-size:10px; }
+    .global-ctrl { display:flex; align-items:center; gap:6px; }
+    .global-ctrl label { font-size:11px; }
+    .global-ctrl input[type="number"] { width:80px; padding:5px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:12px; }
+    .global-ctrl input[type="number"]:focus { border-color:var(--accent); outline:none; }
+    .global-ctrl select { padding:5px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:12px; min-width:100px; }
+    .global-ctrl select:focus { border-color:var(--accent); outline:none; }
+    .global-divider { width:1px; height:24px; background:var(--border); margin:0 4px; }
+    .param-pill { font-size:10px; padding:3px 8px; background:var(--surface-3); border-radius:12px; color:var(--text-dim); cursor:default; }
+    .slider-val { font-size:12px; color:var(--accent); font-weight:600; min-width:28px; }
+    .range-input { width:100px; -webkit-appearance:none; height:4px; background:var(--surface-3); border-radius:2px; }
+    .range-input::-webkit-slider-thumb { -webkit-appearance:none; width:12px; height:12px; background:var(--accent); border-radius:50%; cursor:pointer; }
+
+    /* ── Category prompt pills ───────────────────────────── */
+    .cat-section-label { display:flex; align-items:center; gap:8px; padding-top:4px; }
+    .cat-section-hint { font-size:10px; color:var(--text-dim); font-style:italic; }
+    .cat-prompts-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .cat-prompt-pill { display:flex; align-items:center; gap:5px; padding:7px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text-muted); font-size:12px; cursor:pointer; transition:all 0.15s; }
+    .cat-prompt-pill:hover { border-color:var(--accent); color:var(--text); background:var(--accent-glow); }
+    .cat-prompt-pill .pill-icon { font-size:14px; } .cat-prompt-pill .pill-edit { font-size:10px; color:var(--text-dim); margin-left:2px; }
+    .cat-modules { display:flex; flex-direction:column; gap:6px; }
+    .cat-module-row { display:flex; align-items:flex-start; gap:8px; }
+    .cat-module-label { font-size:12px; color:var(--text-muted); min-width:80px; padding-top:7px; white-space:nowrap; }
+    .cat-module-text { flex:1; padding:6px 10px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; resize:vertical; min-height:32px; font-family:inherit; line-height:1.4; }
+    .cat-module-text:focus { border-color:var(--accent); outline:none; }
+
+    /* ── Modal ────────────────────────────────────────────── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:2000; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+    .modal-overlay.active { display:flex; }
+    .modal-content { background:var(--surface); border:1px solid var(--border); border-radius:12px; width:90%; max-width:700px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.5); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+    .modal-header h3 { font-size:15px; font-weight:600; color:var(--text); }
+    .modal-close { background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; padding:4px 8px; border-radius:4px; }
+    .modal-close:hover { color:var(--text); background:var(--surface-3); }
+    .modal-body { padding:16px 20px; flex:1; overflow-y:auto; }
+    .modal-body textarea { width:100%; padding:12px 14px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:13px; resize:vertical; min-height:200px; font-family:inherit; line-height:1.5; }
+    .modal-body textarea:focus { border-color:var(--accent); outline:none; }
+    .modal-footer { padding:12px 20px; border-top:1px solid var(--border); display:flex; gap:8px; justify-content:flex-end; }
+
+    /* ── QA prompt ────────────────────────────────────────── */
+    .qa-prompt-area { width:100%; }
+    .qa-prompt-area textarea { width:100%; padding:10px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; resize:vertical; min-height:60px; font-family:inherit; line-height:1.4; }
+    .qa-prompt-area textarea:focus { border-color:var(--blue); outline:none; }
+    .qa-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+    .qa-label-row label { font-size:12px; color:var(--blue); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+    .qa-label-row .qa-hint { font-size:10px; color:var(--text-dim); }
+
+    /* ── Buttons ──────────────────────────────────────────── */
+    .master-bar { padding:12px 28px; border-bottom:1px solid var(--border); display:flex; gap:10px; align-items:center; }
+    .btn { padding:8px 16px; border:none; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; transition:all 0.15s; }
+    .btn-master { background:linear-gradient(135deg,var(--accent),#b8944a); color:#000; font-weight:600; padding:10px 24px; font-size:14px; }
+    .btn-master:hover { box-shadow:0 2px 12px var(--accent-glow); transform:translateY(-1px); }
+    .btn-master:disabled { opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-secondary { background:var(--surface-2); color:var(--text); border:1px solid var(--border); }
+    .btn-secondary:hover { background:var(--border); }
+    .btn-danger { background:transparent; color:var(--danger); border:1px solid rgba(238,85,85,0.3); font-size:12px; padding:6px 12px; }
+    .btn-danger:hover { background:rgba(238,85,85,0.08); }
+    .btn-gen { background:var(--accent); color:#000; font-weight:600; }
+    .btn-gen:hover { background:var(--accent-hover); }
+    .btn-gen:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-refine { background:var(--surface-2); color:var(--blue); border:1px solid rgba(91,155,213,0.3); font-size:12px; padding:6px 12px; }
+    .btn-refine:hover { background:rgba(91,155,213,0.08); }
+    .master-status { font-size:12px; color:var(--text-muted); margin-left:auto; }
+
+    /* ── Slots ────────────────────────────────────────────── */
+    .slots { padding:20px 28px; display:flex; flex-direction:column; gap:16px; }
+    .slot { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .slot.generating { border-color:var(--accent); box-shadow:0 0 20px var(--accent-glow); }
+    .slot.done { border-color:var(--success); }
+    .slot-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; background:var(--surface-2); }
+    .slot-num { font-size:13px; font-weight:700; color:var(--accent); min-width:20px; }
+    .slot-status { font-size:11px; padding:2px 8px; border-radius:10px; }
+    .slot-status.empty { background:var(--surface-3); color:var(--text-dim); }
+    .slot-status.ready { background:rgba(76,204,136,0.1); color:var(--success); }
+    .slot-status.generating { background:var(--accent-glow); color:var(--accent); }
+    .slot-status.done { background:rgba(76,204,136,0.1); color:var(--success); }
+    .slot-status.error { background:rgba(238,85,85,0.1); color:var(--danger); }
+    .slot-actions { margin-left:auto; display:flex; gap:6px; }
+
+    .slot-body { display:grid; grid-template-columns:280px 1fr; min-height:200px; }
+    .slot-input { padding:16px; border-right:1px solid var(--border); display:flex; flex-direction:column; gap:12px; }
+
+    .upload-zone { border:2px dashed var(--border); border-radius:8px; padding:24px; text-align:center; cursor:pointer; transition:all 0.2s; flex-shrink:0; }
+    .upload-zone:hover { border-color:var(--accent); background:var(--accent-glow); }
+    .upload-zone.hidden { display:none; }
+    .upload-icon { font-size:28px; } .upload-text { font-size:12px; color:var(--text-muted); margin-top:4px; } .upload-text strong { color:var(--accent); }
+    .cropper-area { display:none; } .cropper-area.active { display:block; } .cropper-area img { max-width:100%; max-height:200px; }
+    .crop-btns { display:flex; gap:6px; margin-top:8px; } .crop-btns .btn { font-size:11px; padding:5px 10px; }
+    .cropped-thumb { display:none; position:relative; } .cropped-thumb.active { display:block; }
+    .cropped-thumb img { max-width:100%; max-height:140px; border-radius:6px; border:1px solid var(--border); }
+    .cropped-thumb .re-btns { display:flex; gap:6px; margin-top:6px; } .cropped-thumb .re-btns .btn { font-size:11px; padding:4px 10px; }
+    .controls-row { display:flex; gap:8px; flex-wrap:wrap; }
+    .ctrl { display:flex; flex-direction:column; gap:3px; }
+    .ctrl label { font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; }
+    .ctrl select, .ctrl input[type="text"] { padding:5px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:12px; min-width:80px; }
+    .ctrl select:focus, .ctrl input:focus { border-color:var(--accent); outline:none; }
+    .custom-cat-input { display:none; } .custom-cat-input.active { display:block; }
+    .slot-prompt-info { font-size:10px; color:var(--text-dim); font-style:italic; padding:2px 0; line-height:1.4; }
+    .slot-prompt-info code { background:var(--surface-3); padding:1px 4px; border-radius:3px; color:var(--accent); font-size:10px; }
+
+    /* ── Visual cards (3 per slot) ────────────────────────── */
+    .slot-outputs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; padding:12px; }
+    .visual-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; transition:border-color 0.2s; }
+    .visual-card.generating { border-color:var(--accent); box-shadow:0 0 12px var(--accent-glow); }
+    .visual-card.done { border-color:var(--success); }
+    .visual-card.error { border-color:var(--danger); }
+    .visual-card.checking { border-color:var(--blue); box-shadow:0 0 12px rgba(91,155,213,0.15); }
+    .visual-card.skipped { opacity:0.3; pointer-events:none; }
+    .vis-header { padding:6px 10px; background:var(--surface-2); border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; min-height:28px; }
+    .vis-label { font-size:10px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:0.3px; }
+    .vis-tag { font-size:9px; padding:1px 6px; border-radius:8px; }
+    .vis-tag.gen { background:var(--accent-glow); color:var(--accent); }
+    .vis-tag.ok { background:rgba(76,204,136,0.1); color:var(--success); }
+    .vis-tag.err { background:rgba(238,85,85,0.1); color:var(--danger); }
+    .vis-tag.skip { background:var(--surface-3); color:var(--text-dim); }
+    .vis-body { position:relative; min-height:150px; display:flex; align-items:center; justify-content:center; flex:1; padding:8px; }
+    .vis-body img.result { max-width:100%; max-height:300px; border-radius:4px; display:none; cursor:pointer; }
+    .vis-placeholder { text-align:center; color:var(--text-dim); font-size:11px; } .vis-placeholder .icon { font-size:24px; margin-bottom:4px; }
+    .vis-spinner { display:none; flex-direction:column; align-items:center; gap:6px; }
+    .vis-spinner.active { display:flex; }
+    .vis-spinner .sp { width:24px; height:24px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; }
+    .vis-spinner .lt { font-size:11px; color:var(--text-muted); }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .vis-footer { padding:5px 10px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:4px; }
+    .vis-footer .btn { font-size:10px; padding:3px 8px; }
+    .vis-usage { font-size:9px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .vis-dl { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:12px; padding:2px 4px; }
+    .vis-dl:hover { color:var(--text); }
+
+    /* ── Refine panel ────────────────────────────────────── */
+    .refine-panel { display:none; border-top:1px solid var(--border); padding:12px 16px; background:var(--surface-2); }
+    .refine-panel.active { display:block; }
+    .refine-panel h4 { font-size:12px; color:var(--blue); margin-bottom:8px; font-weight:600; }
+    .refine-canvas-wrap { position:relative; display:inline-block; margin-bottom:8px; cursor:crosshair; }
+    .refine-canvas-wrap canvas { border-radius:6px; border:1px solid var(--border); max-width:100%; }
+    .refine-tools { display:flex; gap:6px; margin-bottom:8px; align-items:center; }
+    .refine-tools .btn { font-size:10px; padding:4px 8px; }
+    .refine-tools label { font-size:10px; color:var(--text-dim); }
+    .refine-tools input[type="range"] { width:60px; height:3px; -webkit-appearance:none; background:var(--surface-3); border-radius:2px; }
+    .refine-tools input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:10px; height:10px; background:var(--danger); border-radius:50%; cursor:pointer; }
+    .refine-text textarea { width:100%; padding:8px 10px; background:var(--surface-3); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; resize:vertical; min-height:40px; font-family:inherit; }
+    .refine-text textarea:focus { border-color:var(--blue); outline:none; }
+    .refine-suggestions { display:flex; flex-wrap:wrap; gap:5px; margin-bottom:8px; }
+    .refine-chip { font-size:10px; padding:4px 10px; background:var(--surface-3); border:1px solid var(--border); border-radius:14px; color:var(--text-muted); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+    .refine-chip:hover { border-color:var(--blue); color:var(--text); background:rgba(91,155,213,0.08); }
+    .refine-chip.used { border-color:var(--blue); color:var(--blue); background:rgba(91,155,213,0.1); }
+    .refine-chip-section { font-size:9px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; width:100%; padding:2px 0; }
+    .refine-actions { display:flex; gap:6px; margin-top:8px; }
+
+    /* ── QA results ──────────────────────────────────────── */
+    .qa-results { display:none; margin:0 10px 8px; padding:6px 8px; background:var(--surface-2); border-radius:6px; border:1px solid var(--border); font-size:10px; }
+    .qa-status { color:var(--accent); font-weight:600; margin-bottom:2px; font-size:11px; }
+    .qa-check { padding:1px 0; display:flex; align-items:baseline; gap:4px; }
+    .qa-check.pass { color:var(--success); } .qa-check.fail { color:var(--danger); }
+    .qa-check strong { font-size:10px; }
+    .qa-detail { color:var(--text-dim); font-size:9px; }
+    .qa-raw { font-size:9px; color:var(--text-dim); white-space:pre-wrap; max-height:60px; overflow-y:auto; margin-top:4px; }
+    .qa-actions { display:flex; gap:6px; margin-top:6px; }
+    .qa-actions .btn { font-size:10px; padding:4px 10px; }
+    .qa-actions .btn-fix { background:var(--blue); color:#fff; border:none; }
+    .qa-actions .btn-fix:hover { background:#4a8bc4; }
+    .qa-actions .btn-keep { background:var(--surface-3); color:var(--text-muted); border:1px solid var(--border); }
+    .qa-actions .btn-keep:hover { background:var(--border); color:var(--text); }
+
+    /* ── Toast ────────────────────────────────────────────── */
+    .toast-container { position:fixed; bottom:20px; right:20px; z-index:1000; display:flex; flex-direction:column-reverse; gap:8px; pointer-events:none; }
+    .toast-item { padding:10px 18px; background:var(--danger); color:#fff; border-radius:8px; font-size:13px; opacity:0; transform:translateY(10px); transition:all 0.3s; pointer-events:auto; }
+    .toast-item.show { opacity:1; transform:translateY(0); }
+
+    /* ── Tab bar ─────────────────────────────────────────── */
+    .tab-bar { display:flex; align-items:center; gap:4px; padding:6px 28px; border-bottom:1px solid var(--border); background:var(--surface); overflow-x:auto; }
+    .tab-item { display:flex; align-items:center; gap:6px; padding:7px 14px; background:var(--surface-2); border:1px solid var(--border); border-bottom:2px solid transparent; border-radius:8px 8px 0 0; cursor:pointer; font-size:13px; color:var(--text-muted); transition:all 0.15s; white-space:nowrap; user-select:none; }
+    .tab-item:hover { background:var(--surface-3); color:var(--text); }
+    .tab-item.active { border-bottom-color:var(--blue); color:var(--text); background:var(--surface-3); }
+    .tab-label { pointer-events:none; }
+    .tab-label[contenteditable="true"] { pointer-events:auto; outline:none; border-bottom:1px dashed var(--accent); cursor:text; min-width:20px; }
+    .tab-close { font-size:11px; color:var(--text-dim); cursor:pointer; padding:0 2px; border-radius:3px; line-height:1; }
+    .tab-close:hover { color:var(--danger); background:rgba(238,85,85,0.15); }
+    .tab-add { padding:5px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:8px 8px 0 0; cursor:pointer; font-size:14px; color:var(--text-dim); transition:all 0.15s; }
+    .tab-add:hover { color:var(--accent); border-color:var(--accent); background:var(--accent-glow); }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media(max-width:900px) { .slot-body { grid-template-columns:1fr; } .slot-input { border-right:none; border-bottom:1px solid var(--border); } }
+    @media(max-width:650px) { .slot-outputs { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>💎 Sketch <span>→</span> Studio</h1>
+    <div class="badge">Nano Banana Pro</div>
+  </div>
+  <div class="header-right">
+    <span class="slot-count-label">Slots:</span>
+    <input type="number" class="slot-count-input" id="slotCount" min="1" max="10" value="3" onchange="rebuildSlots()">
+  </div>
+</div>
+
+<div class="tab-bar" id="tabBar"></div>
+
+<div class="global-bar">
+  <div class="global-row"><label style="align-self:flex-start;padding-top:8px;">Core Prompt</label></div>
+  <div class="master-prompt-area">
+    <textarea id="masterPrompt" rows="6" placeholder="Write the core prompt with {category_module} where you want category-specific text injected.&#10;&#10;Example: A professional macro product photograph of a luxury jewelry piece.&#10;> Subject: {category_module}&#10;Materials: 18k {metal} with a {finish} finish..."></textarea>
+    <div class="var-hint">Variables: <code>{metal}</code> <code>{finish}</code> <code>{hook_type}</code> <code>{category_module}</code> — <code>{category_module}</code> is replaced with the category text below.</div>
+  </div>
+  <div class="cat-section-label"><label>Category Modules</label><span class="cat-section-hint">Injected after core prompt · Per-category instructions</span></div>
+  <div class="cat-modules" id="catModulesContainer">
+    <div class="cat-module-row">
+      <div class="cat-module-label">💍 Ring</div>
+      <textarea class="cat-module-text" id="catMod-Ring" rows="2" placeholder="Ring-specific instructions…"></textarea>
+    </div>
+    <div class="cat-module-row">
+      <div class="cat-module-label">⭕ Bangle</div>
+      <textarea class="cat-module-text" id="catMod-Bangle" rows="2" placeholder="Bangle-specific instructions…"></textarea>
+    </div>
+    <div class="cat-module-row">
+      <div class="cat-module-label">📿 Necklace</div>
+      <textarea class="cat-module-text" id="catMod-Necklace" rows="2" placeholder="Necklace-specific instructions…"></textarea>
+    </div>
+    <div class="cat-module-row">
+      <div class="cat-module-label">✨ Earring</div>
+      <textarea class="cat-module-text" id="catMod-Earring" rows="2" placeholder="Earring-specific instructions…"></textarea>
+    </div>
+    <div class="cat-module-row">
+      <div class="cat-module-label">🔶 Pendant</div>
+      <textarea class="cat-module-text" id="catMod-Pendant" rows="2" placeholder="Pendant-specific instructions…"></textarea>
+    </div>
+    <div class="cat-module-row">
+      <div class="cat-module-label">🔷 Other</div>
+      <textarea class="cat-module-text" id="catMod-Other" rows="2" placeholder="Generic fallback for custom categories…"></textarea>
+    </div>
+  </div>
+  <!-- QA DISABLED: commented out
+  <div class="qa-label-row" style="padding-top:8px;">
+    <label>🔍 QA Prompt</label>
+    <span class="qa-hint">Runs after generation. QA Rounds=0 to disable.</span>
+  </div>
+  <div class="qa-prompt-area"><textarea id="qaPrompt" rows="3"></textarea></div>
+  -->
+  <textarea id="qaPrompt" style="display:none"></textarea>
+  <div class="global-row">
+    <div class="global-ctrl">
+      <label>Material</label>
+      <select id="globalMetal" onchange="onMaterialChange(); revalidateAll()">
+        <optgroup label="Gold">
+          <option value="9k Yellow Gold">9k Yellow Gold</option>
+          <option value="14k Yellow Gold">14k Yellow Gold</option>
+          <option value="18k Yellow Gold" selected>18k Yellow Gold</option>
+          <option value="22k Yellow Gold">22k Yellow Gold</option>
+          <option value="24k Yellow Gold">24k Yellow Gold</option>
+          <option value="9k White Gold">9k White Gold</option>
+          <option value="14k White Gold">14k White Gold</option>
+          <option value="18k White Gold">18k White Gold</option>
+          <option value="9k Rose Gold">9k Rose Gold</option>
+          <option value="14k Rose Gold">14k Rose Gold</option>
+          <option value="18k Rose Gold">18k Rose Gold</option>
+        </optgroup>
+        <optgroup label="Platinum & Silver">
+          <option value="950 Platinum">950 Platinum</option>
+          <option value="925 Sterling Silver">925 Sterling Silver</option>
+        </optgroup>
+        <optgroup label="Diamond Studded">
+          <option value="18k Yellow Gold with diamonds">18k Yellow Gold + Diamonds</option>
+          <option value="18k White Gold with diamonds">18k White Gold + Diamonds</option>
+          <option value="18k Rose Gold with diamonds">18k Rose Gold + Diamonds</option>
+          <option value="950 Platinum with diamonds">Platinum + Diamonds</option>
+        </optgroup>
+        <optgroup label="Gemstone Mix">
+          <option value="18k Yellow Gold with rubies and diamonds">18k Gold + Ruby + Diamond</option>
+          <option value="18k Yellow Gold with emeralds and diamonds">18k Gold + Emerald + Diamond</option>
+          <option value="18k Yellow Gold with sapphires and diamonds">18k Gold + Sapphire + Diamond</option>
+          <option value="18k White Gold with blue sapphires">18k White Gold + Sapphire</option>
+          <option value="18k Rose Gold with morganite and diamonds">18k Rose Gold + Morganite + Diamond</option>
+        </optgroup>
+        <optgroup label="Custom">
+          <option value="__custom__">Custom…</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="global-ctrl custom-material-input" id="customMaterialWrap" style="display:none">
+      <label>Material</label>
+      <input type="text" id="customMaterialText" placeholder="e.g. 14k Rose Gold with tanzanite" style="min-width:200px; padding:5px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:5px; color:var(--text); font-size:12px;" oninput="revalidateAll()">
+    </div>
+    <div class="global-divider"></div>
+    <div class="global-ctrl">
+      <label>Finish</label>
+      <select id="globalFinish" onchange="revalidateAll()">
+        <option value="Buff">Buff</option><option value="Matte">Matte</option>
+        <option value="High Polish">High Polish</option><option value="Satin">Satin</option><option value="Hammered">Hammered</option>
+      </select>
+    </div>
+    <div class="global-divider"></div>
+    <div class="global-ctrl">
+      <label>Hook Type</label>
+      <select id="globalHookType" onchange="revalidateAll()">
+        <option value="fish hook (open wire)">Fish Hook</option>
+        <option value="push-back stud post">Stud Post</option>
+        <option value="lever-back (hinged clasp)">Lever-back</option>
+        <option value="huggie hoop (small hinged hoop)">Huggie</option>
+        <option value="clip-on (no piercing)">Clip-on</option>
+        <option value="screw-back post">Screw-back</option>
+        <option value="ear wire (shepherd hook)">Shepherd Hook</option>
+        <option value="jhumka hook">Jhumka Hook</option>
+      </select>
+    </div>
+    <div class="global-divider"></div>
+    <div class="global-ctrl">
+      <label>T1</label>
+      <input type="range" class="range-input" id="globalT1" min="0" max="1" step="0.05" value="0.4" oninput="document.getElementById('globalT1Val').textContent=this.value; revalidateAll()">
+      <span class="slider-val" id="globalT1Val">0.4</span>
+    </div>
+    <div class="global-ctrl">
+      <label>T2</label>
+      <input type="range" class="range-input" id="globalT2" min="0" max="1" step="0.05" value="0.6" oninput="document.getElementById('globalT2Val').textContent=this.value; revalidateAll()">
+      <span class="slider-val" id="globalT2Val">0.6</span>
+    </div>
+    <div class="global-ctrl">
+      <label>T3</label>
+      <input type="range" class="range-input" id="globalT3" min="0" max="1" step="0.05" value="0.8" oninput="document.getElementById('globalT3Val').textContent=this.value; revalidateAll()">
+      <span class="slider-val" id="globalT3Val">0.8</span>
+    </div>
+    <div class="global-divider"></div>
+    <div class="global-ctrl">
+      <label>Seed</label>
+      <input type="number" id="globalSeed" placeholder="auto">
+    </div>
+    <div class="global-divider"></div>
+    <span class="param-pill" title="1:1 square output">📐 1:1</span>
+    <span class="param-pill" title="Thinking budget 65535">🧠 65535</span>
+    <div class="global-divider"></div>
+    <!-- QA DISABLED
+    <div class="global-ctrl">
+      <label>QA Rounds</label>
+      <input type="number" id="qaRounds" min="0" max="5" value="0" style="width:50px;">
+    </div>
+    -->
+    <input type="hidden" id="qaRounds" value="0">
+  </div>
+</div>
+
+<div class="master-bar">
+  <button class="btn btn-master" id="masterGenBtn" onclick="generateAll()" disabled>✨ Generate All</button>
+  <button class="btn btn-secondary" onclick="clearAll()">🗑️ Clear All</button>
+  <span class="master-status" id="masterStatus"></span>
+</div>
+
+<div class="slots" id="slotsContainer"></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Modal removed — category modules are now inline textboxes -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// CATEGORY PROMPTS
+// ═══════════════════════════════════════════════════════════════════
+// ── Category Module Defaults (injected after core prompt) ───────────
+const CATEGORY_MODULE_DEFAULTS = {
+  Ring: `A single ring. Match band profile, shank type, and prong configuration from the sketch.`,
+  Bangle: `A single bangle. Match cross-section shape and any clasp mechanism from the sketch.`,
+  Necklace: `A necklace in natural drape. Match chain style, link proportions, and pendant geometry.`,
+  Earring: `A symmetric pair of earrings with {hook_type} finding. Match all dangling elements.`,
+  Pendant: `A single pendant with bail. Match silhouette, internal geometry, and any cutout patterns.`,
+  Other: `Match all geometry from the sketch exactly.`,
+};
+
+const DEFAULT_QA_PROMPT = `You are a Senior Jewelry CAD Auditor. Your goal is to identify "Geometric Deviations" between a 2D technical sketch (Image 1) and a 3D render (Image 2). You are not a creative critic; you are a geometric validator.
+
+Compare Image 1 (Sketch) and Image 2 (Render) using this 3-step mandatory process:
+
+STEP 1: SKETCH INVENTORY (Deconstruction)
+Analyze Image 1. List every single line, curve, and geometric primitive drawn.
+
+STEP 2: RENDER SUBTRACTION (The Delta)
+Look at Image 2. Identify every element that was NOT present in Step 1.
+- Flag any added curls, swirls, or flourishes.
+- Flag any changes in line 'sharpness' (e.g., if a sharp point became a rounded blob).
+- Flag any deviations in band thickness relative to the pencil gauge.
+
+STEP 3: THE VERDICT
+- PASS: If the 3D render is a literal 1:1 translation of the sketch lines.
+- FAIL: If the AI added ANY "artistic flair" or decorative elements not explicitly drawn in the sketch.
+
+Respond in strict JSON only — no other text:
+{
+  "audit_steps": {
+    "sketch_primitives": ["list", "of", "elements"],
+    "hallucinations_detected": ["list", "of", "unauthorized", "additions"],
+    "geometric_drift_score": "0-100 (where 0 is a perfect match)"
+  },
+  "result": "PASS" or "FAIL",
+  "pass": true or false,
+  "checks": [
+    {"name": "geometric_fidelity", "pass": true/false, "detail": "...", "fix": "..."},
+    {"name": "hallucinated_elements", "pass": true/false, "detail": "...", "fix": "..."},
+    {"name": "line_sharpness", "pass": true/false, "detail": "...", "fix": "..."},
+    {"name": "band_thickness", "pass": true/false, "detail": "...", "fix": "..."},
+    {"name": "missing_elements", "pass": true/false, "detail": "...", "fix": "..."}
+  ],
+  "reasoning": "A blunt explanation of why it failed",
+  "refinement_instruction": "STRICT OVERRIDE: specific correction instructions"
+}`;
+
+const VK_ALL = ['v1','v2','v3'];
+const VK_LABELS = { v1:'V1', v2:'V2', v3:'V3' };
+
+// ═══════════════════════════════════════════════════════════════════
+// CATEGORY MODULES — read from textboxes
+// ═══════════════════════════════════════════════════════════════════
+function getCategoryModule(catKey) {
+  const el = document.getElementById(`catMod-${catKey}`);
+  return el ? el.value.trim() : '';
+}
+
+function initCategoryModules() {
+  Object.entries(CATEGORY_MODULE_DEFAULTS).forEach(([key, val]) => {
+    const el = document.getElementById(`catMod-${key}`);
+    if (el) el.value = val;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SLOT STATE
+// ═══════════════════════════════════════════════════════════════════
+const slots = {};
+let _batchRunning = false, _batchTotal = 0, _batchDone = 0;
+
+// ── Client-side concurrency limiter (matches server max) ────────────
+const CLIENT_MAX_CONCURRENT = 3;
+let _clientActive = 0;
+const _clientQueue = [];
+
+function clientAcquire() {
+  if (_clientActive < CLIENT_MAX_CONCURRENT) { _clientActive++; return Promise.resolve(); }
+  return new Promise(resolve => _clientQueue.push(resolve));
+}
+function clientRelease() {
+  if (_clientQueue.length > 0) { _clientQueue.shift()(); } else { _clientActive--; }
+}
+
+function newVis() {
+  return { generating:false, done:false, error:false, skipped:false,
+    resultBase64:null, resultMimeType:null, resultText:null, thoughtSignature:null,
+    originalPrompt:null, conversation:null, sessionId:null, resultImages:null };
+}
+function getSlotCount() { return parseInt(document.getElementById('slotCount').value) || 3; }
+
+function rebuildSlots() {
+  const count = getSlotCount(), container = document.getElementById('slotsContainer'), existing = container.children.length;
+  if (count > existing) {
+    for (let i = existing; i < count; i++) {
+      slots[i] = { cropper:null, croppedDataUrl:null, file:null, _refVk:null, visuals:{ v1:newVis(), v2:newVis(), v3:newVis() } };
+      container.appendChild(createSlotEl(i));
+    }
+  } else if (count < existing) {
+    for (let i = existing-1; i >= count; i--) {
+      if (slots[i]?.cropper) slots[i].cropper.destroy();
+      delete slots[i]; container.removeChild(container.lastElementChild);
+    }
+  }
+  updateMasterBtn();
+}
+
+function createSlotEl(idx) {
+  const div = document.createElement('div');
+  div.className = 'slot'; div.id = `slot-${idx}`;
+  div.innerHTML = `
+    <div class="slot-header">
+      <span class="slot-num">#${idx+1}</span>
+      <span class="slot-status empty" id="status-${idx}">Empty</span>
+      <div class="slot-actions">
+        <button class="btn btn-gen" id="genBtn-${idx}" onclick="generateSlot(${idx})" disabled>⚡ Generate</button>
+      </div>
+    </div>
+    <div class="slot-body">
+      <div class="slot-input">
+        <div class="upload-zone" id="upload-${idx}" onclick="document.getElementById('file-${idx}').click()">
+          <div class="upload-icon">🖼️</div><div class="upload-text">Drop sketch or <strong>click</strong></div>
+        </div>
+        <input type="file" id="file-${idx}" accept="image/jpeg,image/png,image/webp" hidden onchange="handleFile(${idx}, this.files[0])">
+        <div class="cropper-area" id="cropArea-${idx}"><img id="cropImg-${idx}" src="">
+          <div class="crop-btns"><button class="btn btn-gen" onclick="applyCrop(${idx})">✂️ Crop</button><button class="btn btn-secondary" onclick="resetCrop(${idx})">↩️</button><button class="btn btn-danger" onclick="removeImage(${idx})">✕</button></div>
+        </div>
+        <div class="cropped-thumb" id="thumb-${idx}"><img id="thumbImg-${idx}" src="">
+          <div class="re-btns"><button class="btn btn-secondary" onclick="editCrop(${idx})">✂️ Re-crop</button><button class="btn btn-danger" onclick="removeImage(${idx})">✕</button></div>
+        </div>
+        <div class="controls-row">
+          <div class="ctrl"><label>Category</label>
+            <select id="cat-${idx}" onchange="onCatChange(${idx})">
+              <option value="Ring">Ring</option><option value="Bangle">Bangle</option><option value="Necklace">Necklace</option>
+              <option value="Earring">Earring</option><option value="Pendant">Pendant</option><option value="Custom">Custom…</option>
+            </select>
+          </div>
+          <div class="ctrl custom-cat-input" id="customCat-${idx}"><label>Custom</label>
+            <input type="text" id="customCatText-${idx}" placeholder="e.g. Anklet" oninput="validateSlot(${idx})">
+          </div>
+        </div>
+        <div class="slot-prompt-info" id="promptInfo-${idx}"></div>
+      </div>
+      <div class="slot-outputs">
+        ${VK_ALL.map(vk => `
+        <div class="visual-card" id="vc-${idx}-${vk}">
+          <div class="vis-header">
+            <span class="vis-label" id="visLabel-${idx}-${vk}">${VK_LABELS[vk]}</span>
+            <span class="vis-tag skip" id="visTag-${idx}-${vk}"></span>
+          </div>
+          <div class="vis-body" id="visBody-${idx}-${vk}">
+            <div class="vis-placeholder" id="visPh-${idx}-${vk}"><div class="icon">✨</div><div>—</div></div>
+            <div class="vis-spinner" id="visLoader-${idx}-${vk}"><div class="sp"></div><div class="lt">Generating…</div></div>
+            <img class="result" id="visImg-${idx}-${vk}" src="">
+          </div>
+          <div class="vis-footer">
+            <div style="display:flex;gap:4px;">
+              <button class="btn btn-refine" id="visRefBtn-${idx}-${vk}" onclick="openRefine(${idx},'${vk}')" style="display:none">🔄</button>
+              <button class="vis-dl" id="visDl-${idx}-${vk}" onclick="downloadVisual(${idx},'${vk}')" style="display:none" title="Download">⬇️</button>
+            </div>
+            <span class="vis-usage" id="visUsage-${idx}-${vk}"></span>
+          </div>
+          <div class="qa-results" id="visQa-${idx}-${vk}" style="display:none!important">
+            <div class="qa-status" id="visQaStatus-${idx}-${vk}"></div>
+            <div class="qa-checks" id="visQaChecks-${idx}-${vk}"></div>
+            <div class="qa-actions" id="visQaActions-${idx}-${vk}" style="display:none">
+              <button class="btn btn-fix" id="visQaFix-${idx}-${vk}">🔧 Auto-fix</button>
+              <button class="btn btn-keep" id="visQaKeep-${idx}-${vk}">✋ Keep as-is</button>
+            </div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="refine-panel" id="refinePanel-${idx}">
+      <h4 id="refineTitle-${idx}">🔄 Refine</h4>
+      <div class="refine-canvas-wrap"><canvas id="refineCanvas-${idx}"></canvas></div>
+      <div class="refine-tools">
+        <button class="btn btn-danger" onclick="clearAnnotation(${idx})">Clear</button>
+        <label>Size</label><input type="range" id="brushSize-${idx}" min="2" max="20" value="4">
+        <div style="width:12px;height:12px;background:#e55;border-radius:50%;margin-left:4px"></div>
+      </div>
+      <div class="refine-suggestions" id="refineSuggestions-${idx}"></div>
+      <div class="refine-text"><textarea id="refineInstr-${idx}" rows="2" placeholder="What should change? Click suggestions above or type your own."></textarea></div>
+      <div class="refine-actions">
+        <button class="btn btn-gen" id="refineBtn-${idx}" onclick="submitRefine(${idx})">🔄 Send Refinement</button>
+        <button class="btn btn-secondary" onclick="closeRefine(${idx})">Cancel</button>
+      </div>
+    </div>`;
+  setTimeout(() => {
+    const zone = document.getElementById(`upload-${idx}`);
+    if (!zone) return;
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.style.borderColor='var(--accent)'; });
+    zone.addEventListener('dragleave', () => { zone.style.borderColor=''; });
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.style.borderColor=''; if(e.dataTransfer.files[0]) handleFile(idx, e.dataTransfer.files[0]); });
+    initAnnotationCanvas(idx);
+  }, 0);
+  return div;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CATEGORY & PROMPT HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function onCatChange(idx) {
+  document.getElementById(`customCat-${idx}`).classList.toggle('active', document.getElementById(`cat-${idx}`).value === 'Custom');
+  validateSlot(idx);
+}
+function getCategoryValue(idx) {
+  const sel = document.getElementById(`cat-${idx}`).value;
+  return sel === 'Custom' ? (document.getElementById(`customCatText-${idx}`).value.trim() || 'jewelry piece') : sel;
+}
+function getCategoryKey(idx) { return document.getElementById(`cat-${idx}`).value; }
+function getMetalValue() {
+  const val = document.getElementById('globalMetal').value;
+  if (val === '__custom__') return document.getElementById('customMaterialText').value.trim() || '18k Yellow Gold';
+  return val;
+}
+function onMaterialChange() {
+  const isCustom = document.getElementById('globalMetal').value === '__custom__';
+  document.getElementById('customMaterialWrap').style.display = isCustom ? '' : 'none';
+  if (isCustom) document.getElementById('customMaterialText').focus();
+}
+
+function getFinishValue() { return document.getElementById('globalFinish').value; }
+function getHookTypeValue() { return document.getElementById('globalHookType').value; }
+
+function interpolate(template, idx) {
+  return template
+    .replace(/\{category\}/gi, getCategoryValue(idx))
+    .replace(/\{metal\}/gi, getMetalValue())
+    .replace(/\{finish\}/gi, getFinishValue())
+    .replace(/\{hook_type\}/gi, getHookTypeValue());
+}
+
+// ── Hybrid Modular Prompt Construction ──────────────────────────────
+// {category_module} in core prompt is replaced with the category-specific text
+function buildPromptForSlot(idx) {
+  const core = document.getElementById('masterPrompt').value.trim();
+  if (!core) return '';
+
+  const catKey = getCategoryKey(idx);
+  const moduleKey = catKey === 'Custom' ? 'Other' : catKey;
+  const module = getCategoryModule(moduleKey) || '';
+
+  // Inject category module where {category_module} appears, or append if not found
+  let prompt = core.replace(/\{category_module\}/gi, module);
+  if (!core.match(/\{category_module\}/i) && module) {
+    prompt += '\n\n' + module;
+  }
+  return interpolate(prompt, idx);
+}
+
+function hasPromptForSlot(idx) {
+  return !!document.getElementById('masterPrompt').value.trim();
+}
+
+function updatePromptInfo(idx) {
+  const el = document.getElementById(`promptInfo-${idx}`); if (!el) return;
+  const hasCore = !!document.getElementById('masterPrompt').value.trim();
+  const cat = getCategoryValue(idx);
+  const t1 = document.getElementById('globalT1').value;
+  const t2 = document.getElementById('globalT2').value;
+  const t3 = document.getElementById('globalT3').value;
+  if (hasCore) {
+    el.innerHTML = `<b>V1</b> T=${t1} · <b>V2</b> T=${t2} · <b>V3</b> T=${t3} · ${cat}+${getMetalValue()}+${getFinishValue()}`;
+  } else {
+    el.innerHTML = `<span style="color:var(--danger)">⚠ Core prompt required</span>`;
+  }
+  VK_ALL.forEach(vk => {
+    const lbl = document.getElementById(`visLabel-${idx}-${vk}`);
+    if (!lbl) return;
+    const temps = { v1: t1, v2: t2, v3: t3 };
+    lbl.textContent = hasCore ? `${VK_LABELS[vk]} · ${cat} · T=${temps[vk]}` : `${VK_LABELS[vk]} · No prompt`;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FILE / CROP
+// ═══════════════════════════════════════════════════════════════════
+function handleFile(idx, file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  if (file.size > 10*1024*1024) return showToast('Max 10MB');
+  slots[idx].file = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById(`upload-${idx}`).classList.add('hidden');
+    document.getElementById(`thumb-${idx}`).classList.remove('active');
+    const cropArea = document.getElementById(`cropArea-${idx}`); cropArea.classList.add('active');
+    const img = document.getElementById(`cropImg-${idx}`); img.src = e.target.result;
+    if (slots[idx].cropper) slots[idx].cropper.destroy();
+    slots[idx].cropper = new Cropper(img, { viewMode:1, responsive:true, background:false, autoCropArea:1, ready() { applyCrop(idx); } });
+  };
+  reader.readAsDataURL(file);
+}
+function applyCrop(idx) {
+  const s = slots[idx]; if (!s.cropper) return;
+  const canvas = s.cropper.getCroppedCanvas({ maxWidth:2048, maxHeight:2048, imageSmoothingQuality:'high' });
+  s.croppedDataUrl = canvas.toDataURL(s.file?.type || 'image/jpeg', 0.95);
+  document.getElementById(`thumbImg-${idx}`).src = s.croppedDataUrl;
+  document.getElementById(`cropArea-${idx}`).classList.remove('active');
+  document.getElementById(`thumb-${idx}`).classList.add('active');
+  validateSlot(idx);
+}
+function resetCrop(idx) { if (slots[idx].cropper) slots[idx].cropper.reset(); }
+function editCrop(idx) {
+  slots[idx].croppedDataUrl = null;
+  document.getElementById(`thumb-${idx}`).classList.remove('active');
+  document.getElementById(`cropArea-${idx}`).classList.add('active');
+  if (slots[idx].cropper) slots[idx].cropper.destroy();
+  const img = document.getElementById(`cropImg-${idx}`);
+  slots[idx].cropper = new Cropper(img, { viewMode:1, responsive:true, background:false, autoCropArea:1 });
+  validateSlot(idx);
+}
+function removeImage(idx) {
+  if (slots[idx].cropper) { slots[idx].cropper.destroy(); slots[idx].cropper = null; }
+  slots[idx].croppedDataUrl = null; slots[idx].file = null;
+  document.getElementById(`file-${idx}`).value = '';
+  document.getElementById(`cropArea-${idx}`).classList.remove('active');
+  document.getElementById(`thumb-${idx}`).classList.remove('active');
+  document.getElementById(`upload-${idx}`).classList.remove('hidden');
+  validateSlot(idx);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VALIDATION
+// ═══════════════════════════════════════════════════════════════════
+function validateSlot(idx) {
+  const hasImage = !!slots[idx].croppedDataUrl;
+  const hasPrompt = hasPromptForSlot(idx);
+  document.getElementById(`genBtn-${idx}`).disabled = !(hasImage && hasPrompt);
+  // Only update status if nothing is in progress
+  const vis = slots[idx].visuals;
+  const anyBusy = VK_ALL.some(vk => vis[vk].generating);
+  const anyDone = VK_ALL.some(vk => vis[vk].done);
+  if (!anyBusy && !anyDone) {
+    const el = document.getElementById(`status-${idx}`);
+    el.className = `slot-status ${hasImage ? 'ready' : 'empty'}`;
+    el.textContent = hasImage ? 'Ready' : 'Empty';
+  }
+  updatePromptInfo(idx);
+  updateMasterBtn();
+}
+function revalidateAll() { for (let i = 0; i < getSlotCount(); i++) validateSlot(i); }
+function updateMasterBtn() {
+  if (_batchRunning) return;
+  const ready = Object.keys(slots).filter(i => slots[i].croppedDataUrl && hasPromptForSlot(parseInt(i))).length;
+  document.getElementById('masterGenBtn').disabled = ready === 0;
+  document.getElementById('masterStatus').textContent = ready > 0 ? `${ready} slot${ready>1?'s':''} ready` : '';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VISUAL CARD UI HELPERS
+// ═══════════════════════════════════════════════════════════════════
+function setVisualState(idx, vk, state) {
+  const card = document.getElementById(`vc-${idx}-${vk}`);
+  const tag = document.getElementById(`visTag-${idx}-${vk}`);
+  const ph = document.getElementById(`visPh-${idx}-${vk}`);
+  const loader = document.getElementById(`visLoader-${idx}-${vk}`);
+  const img = document.getElementById(`visImg-${idx}-${vk}`);
+  const refBtn = document.getElementById(`visRefBtn-${idx}-${vk}`);
+  const dlBtn = document.getElementById(`visDl-${idx}-${vk}`);
+  card.className = `visual-card ${state}`;
+  if (state === 'skipped') { tag.className='vis-tag skip'; tag.textContent='skip'; ph.style.display=''; loader.classList.remove('active'); img.style.display='none'; refBtn.style.display='none'; dlBtn.style.display='none'; }
+  if (state === 'generating') { tag.className='vis-tag gen'; tag.textContent='⏳'; ph.style.display='none'; loader.classList.add('active'); img.style.display='none'; refBtn.style.display='none'; dlBtn.style.display='none'; }
+  if (state === 'checking') { tag.className='vis-tag gen'; tag.textContent='🔍'; ph.style.display='none'; loader.classList.remove('active'); img.style.display='block'; refBtn.style.display='none'; dlBtn.style.display='none'; card.className='visual-card checking'; }
+  if (state === 'done') { tag.className='vis-tag ok'; tag.textContent='✓'; ph.style.display='none'; loader.classList.remove('active'); img.style.display='block'; refBtn.style.display=''; dlBtn.style.display=''; }
+  if (state === 'error') { tag.className='vis-tag err'; tag.textContent='✕'; ph.style.display=''; loader.classList.remove('active'); img.style.display='none'; refBtn.style.display='none'; dlBtn.style.display='none'; }
+  if (state === 'idle') { tag.className='vis-tag skip'; tag.textContent=''; ph.style.display=''; loader.classList.remove('active'); img.style.display='none'; refBtn.style.display='none'; dlBtn.style.display='none'; }
+}
+
+function updateSlotAggStatus(idx) {
+  const vis = slots[idx].visuals;
+  const active = VK_ALL.filter(vk => !vis[vk].skipped);
+  const done = active.filter(vk => vis[vk].done).length;
+  const gen = active.filter(vk => vis[vk].generating).length;
+  const err = active.filter(vk => vis[vk].error).length;
+  const el = document.getElementById(`status-${idx}`);
+  const slotEl = document.getElementById(`slot-${idx}`);
+  if (gen > 0) { el.className='slot-status generating'; el.textContent=`Generating ${done}/${active.length}`; slotEl.classList.add('generating'); slotEl.classList.remove('done'); }
+  else if (done === active.length && done > 0) { el.className='slot-status done'; el.textContent='Done ✓'; slotEl.classList.remove('generating'); slotEl.classList.add('done'); }
+  else if (err > 0) { el.className='slot-status error'; el.textContent=`${done}/${active.length} done · ${err} error`; slotEl.classList.remove('generating'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GENERATE — single visual
+// ═══════════════════════════════════════════════════════════════════
+async function generateVisual(idx, vk, prompt, temperature, seed, skipQA = false) {
+  const s = slots[idx], vis = s.visuals[vk];
+  if (!s.croppedDataUrl || !prompt) return;
+  const _initiatingTab = _activeTabId;
+
+  // Reset visual state immediately (before waiting for slot)
+  Object.assign(vis, newVis());
+  vis.generating = true; vis.originalPrompt = prompt;
+  setVisualState(idx, vk, 'generating');
+  updateSlotAggStatus(idx);
+
+  // Wait for a concurrency slot before building payload
+  await clientAcquire();
+
+  const parts = s.croppedDataUrl.split(',');
+  const mimeType = parts[0].match(/:(.*?);/)[1];
+  const imageBase64 = parts[1];
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ imageBase64, mimeType, prompt, temperature })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.images?.length) throw new Error(data.error || data.details || 'No image');
+    if (_activeTabId === _initiatingTab) {
+      handleVisualResult(idx, vk, data);
+    } else {
+      // Store result in vis object (still referenced by saved tab state)
+      const img = data.images[0];
+      vis.resultBase64 = img.data; vis.resultMimeType = img.mimeType;
+      vis.resultText = data.text || ''; vis.thoughtSignature = data.thoughtSignature || null;
+      vis.resultImages = data.images; vis.done = true; vis.generating = false;
+      if (data.sessionId) vis.sessionId = data.sessionId;
+    }
+
+    if (false /* QA DISABLED */ && !skipQA) {
+      const qaRounds = parseInt(document.getElementById('qaRounds').value) || 0;
+      if (qaRounds > 0) { try { await runQALoop(idx, vk, qaRounds); } catch(e) { showToast(`QA ${VK_LABELS[vk]}#${idx+1}: ${e.message}`); } }
+    }
+  } catch(err) {
+    vis.error = true; vis.generating = false;
+    if (_activeTabId === _initiatingTab) setVisualState(idx, vk, 'error');
+    showToast(`${VK_LABELS[vk]} #${idx+1}: ${err.message}`);
+  } finally {
+    clientRelease();
+    vis.generating = false;
+    if (_activeTabId === _initiatingTab) updateSlotAggStatus(idx);
+    if (_batchRunning) { _batchDone++; updateBatchProgress(); }
+  }
+}
+
+function handleVisualResult(idx, vk, data) {
+  const s = slots[idx], vis = s.visuals[vk], img = data.images[0];
+  vis.resultBase64 = img.data; vis.resultMimeType = img.mimeType;
+  vis.resultText = data.text || ''; vis.thoughtSignature = data.thoughtSignature || null;
+  vis.resultImages = data.images; vis.done = true; vis.generating = false;
+
+  // Store session ID for chat-based refinement (server manages conversation history)
+  if (data.sessionId) vis.sessionId = data.sessionId;
+
+  const resultEl = document.getElementById(`visImg-${idx}-${vk}`);
+  resultEl.src = `data:${img.mimeType};base64,${img.data}`;
+  setVisualState(idx, vk, 'done');
+
+  if (data.usage) {
+    const u = data.usage;
+    document.getElementById(`visUsage-${idx}-${vk}`).textContent = `${u.totalTokenCount||'?'}t · ${u.thoughtsTokenCount||0}🧠`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GENERATE — slot (fires up to 3 visuals)
+// ═══════════════════════════════════════════════════════════════════
+async function generateSlot(idx, skipQA = false) {
+  const s = slots[idx];
+  if (!s.croppedDataUrl) return;
+
+  const prompt = buildPromptForSlot(idx);
+  if (!prompt) return showToast('Core prompt is required');
+
+  const t1 = document.getElementById('globalT1').value;
+  const t2 = document.getElementById('globalT2').value;
+  const t3 = document.getElementById('globalT3').value;
+  const seed = document.getElementById('globalSeed').value || null;
+  const temps = [t1, t2, t3];
+
+  document.getElementById(`genBtn-${idx}`).disabled = true;
+
+  // Parallel generation — all 3 variants fire at once, concurrency limiter gates them
+  await Promise.all(VK_ALL.map((vk, i) => generateVisual(idx, vk, prompt, temps[i], seed, skipQA)));
+
+  document.getElementById(`genBtn-${idx}`).disabled = false;
+  validateSlot(idx);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// GENERATE ALL — serial slots, then QA pass
+// ═══════════════════════════════════════════════════════════════════
+async function generateAll() {
+  const readySlots = Object.keys(slots).filter(i => slots[i].croppedDataUrl && hasPromptForSlot(parseInt(i))).map(Number);
+  if (!readySlots.length) return;
+
+  _batchTotal = readySlots.length * 3;
+  _batchDone = 0; _batchRunning = true;
+  document.getElementById('masterGenBtn').disabled = true;
+  updateBatchProgress();
+
+  // Phase 1: Generate all visuals — one slot at a time (serial slots, serial visuals)
+  for (const i of readySlots) {
+    await generateSlot(i, true); // skipQA=true — we'll do QA in phase 2
+  }
+
+  // Phase 2: QA pass — DISABLED
+  const qaRounds = 0; // QA DISABLED — was: parseInt(document.getElementById('qaRounds').value) || 0;
+  if (false /* QA DISABLED */ && qaRounds > 0) {
+    document.getElementById('masterStatus').textContent = '🔍 Running QA checks…';
+    for (const i of readySlots) {
+      const doneVks = VK_ALL.filter(vk => slots[i].visuals[vk].done);
+      await Promise.all(doneVks.map(vk =>
+        runQALoop(i, vk, qaRounds).catch(e => showToast(`QA ${VK_LABELS[vk]}#${i+1}: ${e.message}`))
+      ));
+    }
+  }
+
+  _batchRunning = false;
+  const doneCount = readySlots.reduce((n, i) => n + VK_ALL.filter(vk => slots[i].visuals[vk].done).length, 0);
+  const failCount = _batchTotal - doneCount;
+  document.getElementById('masterStatus').textContent = failCount > 0
+    ? `✅ ${doneCount}/${_batchTotal} visuals · ${failCount} failed` : `✅ ${doneCount} visuals completed`;
+  document.getElementById('masterGenBtn').disabled = false;
+  updateMasterBtn();
+}
+
+function updateBatchProgress() {
+  const remaining = _batchTotal - _batchDone;
+  document.getElementById('masterStatus').textContent = remaining > 0
+    ? `⏳ ${_batchDone}/${_batchTotal} visuals done…` : `✅ All ${_batchTotal} visuals finished`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// CONVERSATION TRIMMING — keep turn 1 (original) + last 2 turns + new turn
+// ═══════════════════════════════════════════════════════════════════
+const MAX_CONV_TURNS = 6; // keep at most 6 turns (3 round-trips) before trimming
+function trimConversation(conversation) {
+  if (conversation.length <= MAX_CONV_TURNS) return conversation;
+  // Always keep first 2 turns (original user prompt + first model response)
+  // Then keep the last 2 turns (most recent exchange)
+  return [conversation[0], conversation[1], ...conversation.slice(-2)];
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// REFINE SUGGESTIONS
+// ═══════════════════════════════════════════════════════════════════
+const REFINE_SUGGESTIONS = [
+  { section: '🔧 Geometric Fixes', chips: [
+    { label: '🏔️ Make 3D / volumetric', text: 'Elements like flowers, leaves, and raised motifs are rendering FLAT. They must have realistic 3D volume, depth, and sculptural form — look at the sketch, these are raised/embossed elements, not surface prints.' },
+    { label: '🪝 Fix hook/finding', text: 'The earring hook/mechanism type is WRONG. It must be a {hook_type} finding. Regenerate with the correct mechanism — shape, proportions, and attachment point must be accurate for this finding type.' },
+    { label: '➕ Add missing engravings', text: 'The sketch shows engravings/textures that are MISSING from this render. Look at the original sketch again — reproduce every engraved line, pattern, and texture detail that was drawn.' },
+    { label: '➖ Remove hallucinated details', text: 'This render has decorative elements that DO NOT exist in the original sketch. Remove all added engravings, extra stones, filigree, swirls, or flourishes that are not explicitly drawn in the sketch. Simpler is correct.' },
+    { label: '🔢 Wrong stone count', text: 'The number of gemstones/diamonds does not match the sketch. Count the stones in the original sketch and reproduce that EXACT count — do not add or remove any.' },
+    { label: '📏 Wrong proportions', text: 'The proportions are off compared to the sketch. Fix the band thickness, element sizing, and spacing to match the original sketch precisely.' },
+  ]},
+  { section: 'Metal & Finish', chips: [
+    { label: '✨ More reflective', text: 'Make the metal surface more reflective and lustrous with natural studio highlights.' },
+    { label: '🌡️ Warmer gold', text: 'Warmer, richer gold tone — currently too pale/cool.' },
+    { label: '❄️ Cooler tone', text: 'Cooler silver/platinum tone — currently too warm/yellow.' },
+    { label: '🔨 Brushed texture', text: 'Apply a brushed/satin texture to the metal surface instead of mirror polish.' },
+  ]},
+  { section: 'Photo & Composition', chips: [
+    { label: '💡 Softer light', text: 'Softer, more diffused studio lighting — reduce harsh reflections and hot spots.' },
+    { label: '📐 Better angle', text: 'Adjust the viewing angle to better reveal the face/top design and 3D depth of the piece.' },
+    { label: '🔲 Clean background', text: 'Pure white seamless background — remove any grey gradient, shadows, or surface reflections.' },
+    { label: '🎯 Sharper focus', text: 'Sharper focus across the entire piece — currently slightly soft on details.' },
+  ]},
+];
+
+function buildSuggestionChips(idx) {
+  const container = document.getElementById(`refineSuggestions-${idx}`);
+  if (!container) return;
+  container.innerHTML = '';
+  // If QA results exist for this visual, show failed checks as priority suggestions
+  const vk = slots[idx]._refVk;
+  if (vk) {
+    const qaChecksEl = document.getElementById(`visQaChecks-${idx}-${vk}`);
+    if (qaChecksEl && qaChecksEl.innerHTML) {
+      const failEls = qaChecksEl.querySelectorAll('.qa-check.fail');
+      if (failEls.length > 0) {
+        const sec = document.createElement('div'); sec.className = 'refine-chip-section'; sec.textContent = '⚠️ From QA'; container.appendChild(sec);
+        failEls.forEach(el => {
+          const name = el.querySelector('strong')?.textContent || '';
+          const detail = el.querySelector('.qa-detail')?.textContent?.replace('— ', '') || '';
+          const chip = document.createElement('button'); chip.className = 'refine-chip';
+          chip.textContent = `🔧 Fix ${name}`;
+          chip.onclick = () => appendSuggestion(idx, `Fix ${name}: ${detail}`);
+          container.appendChild(chip);
+        });
+      }
+    }
+  }
+  // Standard suggestions
+  REFINE_SUGGESTIONS.forEach(group => {
+    const sec = document.createElement('div'); sec.className = 'refine-chip-section'; sec.textContent = group.section; container.appendChild(sec);
+    group.chips.forEach(chip => {
+      const btn = document.createElement('button'); btn.className = 'refine-chip'; btn.textContent = chip.label;
+      btn.onclick = () => { appendSuggestion(idx, interpolate(chip.text, idx)); btn.classList.add('used'); };
+      container.appendChild(btn);
+    });
+  });
+}
+
+function appendSuggestion(idx, text) {
+  const ta = document.getElementById(`refineInstr-${idx}`);
+  const current = ta.value.trim();
+  ta.value = current ? `${current}\n${text}` : text;
+  ta.focus();
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// REFINE
+// ═══════════════════════════════════════════════════════════════════
+function openRefine(idx, vk) {
+  const vis = slots[idx].visuals[vk];
+  if (!vis.done) return;
+  slots[idx]._refVk = vk;
+  document.getElementById(`refineTitle-${idx}`).textContent = `🔄 Refine ${VK_LABELS[vk]}`;
+  const panel = document.getElementById(`refinePanel-${idx}`);
+  panel.classList.add('active');
+  loadAnnotationCanvas(idx, document.getElementById(`visImg-${idx}-${vk}`).src);
+  buildSuggestionChips(idx);
+}
+function closeRefine(idx) { document.getElementById(`refinePanel-${idx}`).classList.remove('active'); slots[idx]._refVk = null; }
+
+function initAnnotationCanvas(idx) {
+  const canvas = document.getElementById(`refineCanvas-${idx}`), ctx = canvas.getContext('2d');
+  let drawing = false;
+  canvas.addEventListener('pointerdown', e => { drawing=true; ctx.beginPath(); ctx.moveTo(e.offsetX,e.offsetY); });
+  canvas.addEventListener('pointermove', e => {
+    if (!drawing) return;
+    const size = parseInt(document.getElementById(`brushSize-${idx}`).value)||4;
+    ctx.strokeStyle='#ee5555'; ctx.lineWidth=size; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.lineTo(e.offsetX,e.offsetY); ctx.stroke();
+  });
+  canvas.addEventListener('pointerup', ()=>{ drawing=false; });
+  canvas.addEventListener('pointerleave', ()=>{ drawing=false; });
+}
+function loadAnnotationCanvas(idx, src) {
+  const canvas = document.getElementById(`refineCanvas-${idx}`), ctx = canvas.getContext('2d'), img = new Image();
+  img.onload = () => {
+    const sc = Math.min(1024/img.width,1024/img.height,1);
+    canvas.width=img.width*sc; canvas.height=img.height*sc;
+    canvas._bgImage=img; canvas._scale=sc;
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+  };
+  img.src = src;
+}
+function clearAnnotation(idx) {
+  const canvas = document.getElementById(`refineCanvas-${idx}`), ctx = canvas.getContext('2d');
+  if (canvas._bgImage) ctx.drawImage(canvas._bgImage,0,0,canvas.width,canvas.height);
+}
+function getAnnotationBase64(idx) { return document.getElementById(`refineCanvas-${idx}`).toDataURL('image/png').split(',')[1]; }
+
+async function submitRefine(idx) {
+  const vk = slots[idx]._refVk;
+  if (!vk) return showToast('No visual selected for refine');
+  const vis = slots[idx].visuals[vk];
+  const instrText = document.getElementById(`refineInstr-${idx}`).value.trim();
+  if (!instrText) return showToast('Write refinement instructions');
+  if (!vis.sessionId) return showToast('Generate first');
+
+  // Use the temperature that was used for this visual
+  const tempMap = { v1: 'globalT1', v2: 'globalT2', v3: 'globalT3' };
+  const temperature = document.getElementById(tempMap[vk]).value;
+
+  const annData = getAnnotationBase64(idx);
+
+  vis.generating = true; vis.done = false; vis.error = false;
+  setVisualState(idx, vk, 'generating');
+  updateSlotAggStatus(idx);
+  document.getElementById(`refineBtn-${idx}`).disabled = true;
+
+  try {
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        sessionId: vis.sessionId,
+        prompt: instrText,
+        annotationBase64: annData || undefined,
+        temperature,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.images?.length) throw new Error(data.error || data.details || 'No image');
+    handleVisualResult(idx, vk, data);
+    document.getElementById(`refineInstr-${idx}`).value = '';
+    closeRefine(idx);
+  } catch(err) {
+    vis.error = true; setVisualState(idx, vk, 'error');
+    showToast(`Refine ${VK_LABELS[vk]}#${idx+1}: ${err.message}`);
+  } finally {
+    vis.generating = false;
+    document.getElementById(`refineBtn-${idx}`).disabled = false;
+    updateSlotAggStatus(idx);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTO-QA
+// ═══════════════════════════════════════════════════════════════════
+function getQAPrompt(idx) {
+  const t = document.getElementById('qaPrompt').value.trim();
+  return t ? interpolate(t, idx) : '';
+}
+
+async function runQALoop(idx, vk, maxRounds) {
+  const vis = slots[idx].visuals[vk];
+  const qaDiv = document.getElementById(`visQa-${idx}-${vk}`); qaDiv.style.display='';
+  for (let round=1; round<=maxRounds; round++) {
+    setVisualState(idx, vk, 'checking');
+    updateQADisplay(idx, vk, { status:`🔍 QA Round ${round}/${maxRounds}…` });
+    let result;
+    try { result = await qaCheck(idx, vk); } catch(e) { setVisualState(idx, vk, 'done'); updateQADisplay(idx, vk, { status:`❌ ${e.message}` }); return; }
+    if (result.parseError) { setVisualState(idx, vk, 'done'); updateQADisplay(idx, vk, { status:'⚠️ Invalid JSON', rawText:result.rawText }); return; }
+
+    // Extract audit metadata
+    const driftScore = result.audit_steps?.geometric_drift_score;
+    const reasoning = result.reasoning;
+    const qaExtra = { driftScore, reasoning };
+
+    // Pass → done
+    if (result.pass || result.result === 'PASS') {
+      setVisualState(idx, vk, 'done');
+      updateQADisplay(idx, vk, { status:`✅ Passed (R${round})`, checks:result.checks, ...qaExtra });
+      hideQAActions(idx, vk);
+      return;
+    }
+
+    // Fail → show results and wait for user decision
+    const failedChecks = (result.checks||[]).filter(c => !c.pass && c.fix);
+    const failCount = failedChecks.length;
+    setVisualState(idx, vk, 'done'); // keep image visible
+    updateQADisplay(idx, vk, {
+      status: `❌ R${round}/${maxRounds} — ${failCount} issue${failCount!==1?'s':''} found`,
+      checks: result.checks, ...qaExtra
+    });
+
+    // No fixable issues or last round
+    if (!failCount || round === maxRounds) {
+      updateQADisplay(idx, vk, {
+        status: `⚠️ ${round===maxRounds ? 'Rounds exhausted' : 'No fix suggested'} — ${failCount} issue${failCount!==1?'s':''}`,
+        checks: result.checks
+      });
+      hideQAActions(idx, vk);
+      return;
+    }
+
+    // Use refinement_instruction from QA if available, otherwise aggregate individual fixes
+    const aggregatedFix = result.refinement_instruction
+      ? result.refinement_instruction
+      : failedChecks.map((c, i) => `${i+1}. [${c.name}] ${c.fix}`).join('\n');
+    const decision = await showQADecision(idx, vk, round, maxRounds);
+
+    if (decision === 'keep') {
+      updateQADisplay(idx, vk, { status:`✋ Kept as-is (R${round})`, checks:result.checks });
+      return;
+    }
+
+    // Auto-fix
+    updateQADisplay(idx, vk, {
+      status: `🔧 Fixing ${failCount} issue${failCount!==1?'s':''}…`,
+      checks: result.checks
+    });
+    hideQAActions(idx, vk);
+    try { await autoRefine(idx, vk, aggregatedFix, result); } catch(e) { updateQADisplay(idx, vk, { status:`❌ Fix error: ${e.message}` }); return; }
+    // Loop continues → next QA round
+  }
+}
+
+// Show fix/keep buttons and return a promise that resolves with the user's choice
+function showQADecision(idx, vk, round, maxRounds) {
+  return new Promise(resolve => {
+    const actionsEl = document.getElementById(`visQaActions-${idx}-${vk}`);
+    const fixBtn = document.getElementById(`visQaFix-${idx}-${vk}`);
+    const keepBtn = document.getElementById(`visQaKeep-${idx}-${vk}`);
+    actionsEl.style.display = 'flex';
+    fixBtn.textContent = `🔧 Auto-fix (R${round+1}/${maxRounds})`;
+
+    const cleanup = () => { actionsEl.style.display = 'none'; fixBtn.onclick = null; keepBtn.onclick = null; };
+    fixBtn.onclick = () => { cleanup(); resolve('fix'); };
+    keepBtn.onclick = () => { cleanup(); resolve('keep'); };
+  });
+}
+
+function hideQAActions(idx, vk) {
+  const el = document.getElementById(`visQaActions-${idx}-${vk}`);
+  if (el) el.style.display = 'none';
+}
+
+async function qaCheck(idx, vk) {
+  const vis = slots[idx].visuals[vk], qa = getQAPrompt(idx);
+  if (!qa) throw new Error('QA prompt empty');
+  const sp = slots[idx].croppedDataUrl.split(','), sm = sp[0].match(/:(.*?);/)[1], sb = sp[1];
+  const res = await fetch('/api/check', { method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ sketchBase64:sb, sketchMimeType:sm, resultBase64:vis.resultBase64, resultMimeType:vis.resultMimeType, qaPrompt:qa }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error||'QA failed');
+  try {
+    let t = data.text.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+    try { return JSON.parse(t); } catch(e) {}
+    const first = data.text.indexOf('{'), last = data.text.lastIndexOf('}');
+    if (first !== -1 && last > first) return JSON.parse(data.text.substring(first, last + 1));
+    throw new Error('No JSON found');
+  }
+  catch(e) { return { pass:false, checks:[], parseError:true, rawText:data.text }; }
+}
+
+async function autoRefine(idx, vk, fixText, qaResult) {
+  const vis = slots[idx].visuals[vk];
+  if (!vis.sessionId) throw new Error('No session — generate first');
+
+  const tempMap = { v1:'globalT1', v2:'globalT2', v3:'globalT3' };
+  const temperature = document.getElementById(tempMap[vk]).value;
+
+  // Build the refinement prompt from QA results
+  const refinementInstruction = qaResult?.refinement_instruction || fixText;
+
+  vis.generating = true; vis.done = false;
+  setVisualState(idx, vk, 'generating');
+  updateSlotAggStatus(idx);
+
+  const res = await fetch('/api/chat', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: vis.sessionId, prompt: refinementInstruction, temperature })
+  });
+  const data = await res.json();
+  vis.generating = false;
+  if (!res.ok || !data.images?.length) {
+    vis.error = true; setVisualState(idx, vk, 'error'); updateSlotAggStatus(idx);
+    throw new Error(data.error || 'No image');
+  }
+  handleVisualResult(idx, vk, data);
+  updateSlotAggStatus(idx);
+}
+
+function updateQADisplay(idx, vk, {status,checks,rawText,auditSteps,reasoning,driftScore}) {
+  const qaDiv=document.getElementById(`visQa-${idx}-${vk}`); qaDiv.style.display='';
+  document.getElementById(`visQaStatus-${idx}-${vk}`).textContent=status||'';
+  const el=document.getElementById(`visQaChecks-${idx}-${vk}`);
+  let html = '';
+  if (driftScore !== undefined) html += `<div class="qa-check" style="color:var(--accent)">📊 <strong>Drift Score:</strong> <span class="qa-detail">${driftScore}/100</span></div>`;
+  if (reasoning) html += `<div class="qa-check" style="color:var(--text-muted)">💬 <span class="qa-detail">${reasoning}</span></div>`;
+  if (checks?.length) html += checks.map(c=>`<div class="qa-check ${c.pass?'pass':'fail'}">${c.pass?'✅':'❌'} <strong>${c.name}</strong>${c.detail?` <span class="qa-detail">— ${c.detail}</span>`:''}</div>`).join('');
+  if (!html && rawText) html = `<pre class="qa-raw">${rawText.substring(0,300)}</pre>`;
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════════════
+function clearAll() {
+  for (let i=0; i<getSlotCount(); i++) {
+    removeImage(i);
+    VK_ALL.forEach(vk => {
+      slots[i].visuals[vk] = newVis();
+      setVisualState(i, vk, 'idle');
+      document.getElementById(`visUsage-${i}-${vk}`).textContent='';
+      document.getElementById(`visQa-${i}-${vk}`).style.display='none';
+    });
+    closeRefine(i);
+    document.getElementById(`slot-${i}`).classList.remove('done','generating');
+  }
+  _batchRunning = false; _batchDone = 0; _batchTotal = 0;
+  document.getElementById('masterStatus').textContent = '';
+  updateMasterBtn();
+}
+
+function downloadVisual(idx, vk) {
+  const vis = slots[idx].visuals[vk]; if (!vis.resultBase64) return;
+  const a=document.createElement('a');
+  a.href=`data:${vis.resultMimeType};base64,${vis.resultBase64}`;
+  const cat=getCategoryValue(idx), ext=(vis.resultMimeType||'image/jpeg').split('/')[1]||'jpg';
+  a.download=`sketch-${idx+1}-${vk}-${cat.toLowerCase()}-${Date.now()}.${ext}`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function showToast(msg) {
+  const c=document.getElementById('toastContainer'), t=document.createElement('div');
+  t.className='toast-item'; t.textContent=msg; c.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},4000);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TABS — Prompt Experiment Tabs
+// ═══════════════════════════════════════════════════════════════════
+const _tabs = {};   // tabId -> full state snapshot
+let _activeTabId = null;
+let _tabCounter = 0;
+
+function _genTabId() { return 'tab-' + (++_tabCounter); }
+
+function saveTabState(tabId) {
+  if (!tabId || !_tabs[tabId]) return;
+  const t = _tabs[tabId];
+  t.corePrompt = document.getElementById('masterPrompt').value;
+  t.qaPrompt = document.getElementById('qaPrompt').value;
+  t.metal = document.getElementById('globalMetal').value;
+  t.customMaterial = document.getElementById('customMaterialText').value;
+  t.finish = document.getElementById('globalFinish').value;
+  t.hookType = document.getElementById('globalHookType').value;
+  t.t1 = document.getElementById('globalT1').value;
+  t.t2 = document.getElementById('globalT2').value;
+  t.t3 = document.getElementById('globalT3').value;
+  t.seed = document.getElementById('globalSeed').value;
+  t.slotCount = getSlotCount();
+  // Category modules
+  t.categoryModules = {};
+  ['Ring','Bangle','Necklace','Earring','Pendant','Other'].forEach(k => {
+    const el = document.getElementById(`catMod-${k}`);
+    if (el) t.categoryModules[k] = el.value;
+  });
+  // Slots
+  t.slots = {};
+  for (let i = 0; i < t.slotCount; i++) {
+    const s = slots[i];
+    if (!s) continue;
+    const saved = {
+      file: s.file,
+      croppedDataUrl: s.croppedDataUrl,
+      category: document.getElementById(`cat-${i}`)?.value,
+      customCatText: document.getElementById(`customCatText-${i}`)?.value || '',
+      cropperData: null,
+      originalSrc: null,
+      visuals: {},
+      refVk: s._refVk,
+      annotationDataUrl: null,
+    };
+    // Save cropper box data if active
+    if (s.cropper) {
+      try { saved.cropperData = s.cropper.getData(); } catch(e) {}
+      saved.originalSrc = document.getElementById(`cropImg-${i}`)?.src || null;
+      s.cropper.destroy(); s.cropper = null;
+    } else {
+      saved.originalSrc = document.getElementById(`cropImg-${i}`)?.src || null;
+    }
+    // Save annotation canvas
+    const refCanvas = document.getElementById(`refineCanvas-${i}`);
+    if (refCanvas && refCanvas.width > 0) {
+      try { saved.annotationDataUrl = refCanvas.toDataURL(); } catch(e) {}
+    }
+    // Deep copy visuals
+    VK_ALL.forEach(vk => {
+      const v = s.visuals[vk];
+      saved.visuals[vk] = { ...v };
+    });
+    t.slots[i] = saved;
+  }
+}
+
+function loadTabState(tabId) {
+  const t = _tabs[tabId];
+  if (!t) return;
+  _activeTabId = tabId;
+
+  // Restore global controls
+  document.getElementById('masterPrompt').value = t.corePrompt;
+  document.getElementById('qaPrompt').value = t.qaPrompt;
+  document.getElementById('globalMetal').value = t.metal;
+  document.getElementById('customMaterialText').value = t.customMaterial;
+  document.getElementById('customMaterialWrap').style.display = t.metal === '__custom__' ? '' : 'none';
+  document.getElementById('globalFinish').value = t.finish;
+  document.getElementById('globalHookType').value = t.hookType;
+  document.getElementById('globalT1').value = t.t1; document.getElementById('globalT1Val').textContent = t.t1;
+  document.getElementById('globalT2').value = t.t2; document.getElementById('globalT2Val').textContent = t.t2;
+  document.getElementById('globalT3').value = t.t3; document.getElementById('globalT3Val').textContent = t.t3;
+  document.getElementById('globalSeed').value = t.seed;
+  document.getElementById('slotCount').value = t.slotCount;
+
+  // Category modules
+  ['Ring','Bangle','Necklace','Earring','Pendant','Other'].forEach(k => {
+    const el = document.getElementById(`catMod-${k}`);
+    if (el && t.categoryModules[k] !== undefined) el.value = t.categoryModules[k];
+  });
+
+  // Rebuild slots DOM
+  // First clear existing
+  const container = document.getElementById('slotsContainer');
+  for (let i = container.children.length - 1; i >= 0; i--) {
+    if (slots[i]?.cropper) slots[i].cropper.destroy();
+    delete slots[i];
+  }
+  container.innerHTML = '';
+
+  // Rebuild
+  document.getElementById('slotCount').value = t.slotCount;
+  rebuildSlots();
+
+  // Restore each slot's state
+  for (let i = 0; i < t.slotCount; i++) {
+    const saved = t.slots[i];
+    if (!saved) continue;
+    const s = slots[i];
+    s.file = saved.file;
+    s.croppedDataUrl = saved.croppedDataUrl;
+    s._refVk = saved.refVk;
+
+    // Category
+    const catEl = document.getElementById(`cat-${i}`);
+    if (catEl && saved.category) catEl.value = saved.category;
+    const customCatEl = document.getElementById(`customCatText-${i}`);
+    if (customCatEl) customCatEl.value = saved.customCatText;
+    if (saved.category === 'Custom') document.getElementById(`customCat-${i}`)?.classList.add('active');
+
+    // Restore image preview
+    if (saved.croppedDataUrl) {
+      document.getElementById(`upload-${i}`).classList.add('hidden');
+      document.getElementById(`thumbImg-${i}`).src = saved.croppedDataUrl;
+      document.getElementById(`thumb-${i}`).classList.add('active');
+      document.getElementById(`cropArea-${i}`).classList.remove('active');
+      // If we have original src and file, set up for potential re-crop
+      if (saved.originalSrc) {
+        document.getElementById(`cropImg-${i}`).src = saved.originalSrc;
+      }
+    } else if (saved.file && saved.originalSrc) {
+      // Image uploaded but not yet cropped — restore cropper
+      document.getElementById(`upload-${i}`).classList.add('hidden');
+      document.getElementById(`cropArea-${i}`).classList.add('active');
+      const img = document.getElementById(`cropImg-${i}`);
+      img.src = saved.originalSrc;
+      s.cropper = new Cropper(img, { viewMode:1, responsive:true, background:false, autoCropArea:1,
+        ready() { if (saved.cropperData) try { s.cropper.setData(saved.cropperData); } catch(e) {} }
+      });
+    }
+
+    // Restore visuals
+    VK_ALL.forEach(vk => {
+      const v = saved.visuals[vk];
+      if (!v) return;
+      s.visuals[vk] = { ...v };
+      if (v.done && v.resultBase64) {
+        document.getElementById(`visImg-${i}-${vk}`).src = `data:${v.resultMimeType};base64,${v.resultBase64}`;
+        setVisualState(i, vk, 'done');
+      } else if (v.error) {
+        setVisualState(i, vk, 'error');
+      } else if (v.generating) {
+        setVisualState(i, vk, 'generating');
+      } else {
+        setVisualState(i, vk, 'idle');
+      }
+      // Restore usage text
+      const usageEl = document.getElementById(`visUsage-${i}-${vk}`);
+      if (usageEl && v.done) {
+        // usage is lost on switch, that's okay
+      }
+    });
+
+    // Restore annotation canvas if refine was open
+    if (saved.annotationDataUrl && saved.refVk) {
+      const canvas = document.getElementById(`refineCanvas-${i}`);
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        const annImg = new Image();
+        annImg.onload = () => {
+          canvas.width = annImg.width; canvas.height = annImg.height;
+          ctx.drawImage(annImg, 0, 0);
+        };
+        annImg.src = saved.annotationDataUrl;
+      }
+    }
+
+    validateSlot(i);
+    updateSlotAggStatus(i);
+  }
+  updateMasterBtn();
+}
+
+function renderTabBar() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = '';
+  const ids = Object.keys(_tabs);
+  ids.forEach(id => {
+    const t = _tabs[id];
+    const tab = document.createElement('div');
+    tab.className = 'tab-item' + (id === _activeTabId ? ' active' : '');
+    tab.dataset.tabId = id;
+
+    const label = document.createElement('span');
+    label.className = 'tab-label';
+    label.textContent = t.name;
+    // Double-click to rename
+    label.addEventListener('dblclick', e => {
+      e.stopPropagation();
+      label.contentEditable = 'true';
+      label.focus();
+      // Select all text
+      const range = document.createRange(); range.selectNodeContents(label);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    });
+    label.addEventListener('blur', () => {
+      label.contentEditable = 'false';
+      const newName = label.textContent.trim() || t.name;
+      t.name = newName; label.textContent = newName;
+    });
+    label.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); label.blur(); }
+    });
+
+    tab.appendChild(label);
+
+    // Close button (only if more than 1 tab)
+    if (ids.length > 1) {
+      const close = document.createElement('span');
+      close.className = 'tab-close';
+      close.textContent = '✕';
+      close.addEventListener('click', e => { e.stopPropagation(); closeTab(id); });
+      tab.appendChild(close);
+    }
+
+    tab.addEventListener('click', () => switchTab(id));
+    bar.appendChild(tab);
+  });
+
+  // Add button
+  if (ids.length < 5) {
+    const addBtn = document.createElement('div');
+    addBtn.className = 'tab-add';
+    addBtn.textContent = '+';
+    addBtn.title = 'Clone current tab';
+    addBtn.addEventListener('click', () => cloneTab());
+    bar.appendChild(addBtn);
+  }
+}
+
+function switchTab(tabId) {
+  if (tabId === _activeTabId) return;
+  saveTabState(_activeTabId);
+  loadTabState(tabId);
+  renderTabBar();
+}
+
+function cloneTab() {
+  if (Object.keys(_tabs).length >= 5) return showToast('Max 5 tabs');
+  saveTabState(_activeTabId);
+  const src = _tabs[_activeTabId];
+  const newId = _genTabId();
+  // Deep clone
+  const clone = JSON.parse(JSON.stringify(src));
+  clone.name = src.name + ' (copy)';
+  // JSON.parse loses File objects — copy them manually
+  for (let i = 0; i < clone.slotCount; i++) {
+    if (clone.slots[i] && src.slots[i]) {
+      clone.slots[i].file = src.slots[i].file;
+    }
+  }
+  _tabs[newId] = clone;
+  loadTabState(newId);
+  renderTabBar();
+}
+
+function closeTab(tabId) {
+  const ids = Object.keys(_tabs);
+  if (ids.length <= 1) return;
+  delete _tabs[tabId];
+  if (_activeTabId === tabId) {
+    const remaining = Object.keys(_tabs);
+    loadTabState(remaining[0]);
+  }
+  renderTabBar();
+}
+
+function initFirstTab() {
+  const id = _genTabId();
+  _tabs[id] = {
+    name: 'Experiment 1',
+    corePrompt: DEFAULT_CORE_PROMPT,
+    qaPrompt: DEFAULT_QA_PROMPT,
+    metal: '18k Yellow Gold',
+    customMaterial: '',
+    finish: 'Buff',
+    hookType: 'fish hook (open wire)',
+    t1: '0.4', t2: '0.6', t3: '0.8',
+    seed: '',
+    slotCount: 3,
+    categoryModules: { ...CATEGORY_MODULE_DEFAULTS },
+    slots: {},
+  };
+  _activeTabId = id;
+  renderTabBar();
+}
+
+// ── Init ────────────────────────────────────────────────────────────
+const DEFAULT_CORE_PROMPT = `4K macro product photograph, soft diffused overhead lighting with subtle rim light, pure white background — photorealistic jewelry with sculpted three-dimensional depth, visible surface relief, crisp engraved detail, and natural metallic specular highlights.
+
+Exact 1:1 match to the attached sketch. Every internal line is a real carved feature — engravings, grooves, ridges, bezels, seams. Reproduce them all with visible depth. Raised elements get full 3D volume, never flat printed texture. Add nothing not drawn. Remove nothing drawn.
+
+{category_module} in {metal}, {finish} finish.
+
+Sketch-reading rules: Small circles are stone settings — count exactly. Hatched areas are textured surfaces. Thicker lines indicate primary structural edges; thinner lines indicate secondary detail like engravings or inlay borders.
+
+No human body parts. No background props. Standalone piece only, centered in frame.`;
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('masterPrompt').value = DEFAULT_CORE_PROMPT;
+  document.getElementById('masterPrompt').addEventListener('input', revalidateAll);
+  document.getElementById('qaPrompt').value = DEFAULT_QA_PROMPT;
+  initCategoryModules();
+  initFirstTab();
+});
+rebuildSlots();
+</script>
+</body>
+</html>

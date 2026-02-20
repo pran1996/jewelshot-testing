@@ -1,0 +1,15 @@
+{
+  "name": "jewelry-sketch-to-studio",
+  "version": "1.0.0",
+  "description": "Convert jewelry sketches to studio-quality visuals using Gemini 3 Pro Image",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.41.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0"
+  }
+}

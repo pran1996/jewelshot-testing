@@ -1,0 +1,5 @@
+node_modules/
+.env
+*.log
+quicklens-platform-backend/
+quicklens-platform-backend/

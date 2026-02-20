@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Tester — Jewelry CAD Audit</title>
+<style>
+  :root { --bg:#0a0a0a; --surface:#141414; --surface-2:#1e1e1e; --surface-3:#252525; --border:#2a2a2a; --text:#e8e8e8; --text-muted:#888; --text-dim:#555; --accent:#5b9bd5; --accent-hover:#4a8bc4; --gold:#c9a55a; --success:#4c8; --danger:#e55; --radius:10px; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; padding:24px; }
+  h1 { font-size:20px; font-weight:600; margin-bottom:20px; } h1 span { color:var(--accent); }
+  .layout { display:grid; grid-template-columns:1fr 1fr; gap:20px; max-width:1400px; margin:0 auto; }
+  .panel { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+  .panel h2 { font-size:14px; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; }
+  .full-width { grid-column:1/-1; }
+  .images-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px; }
+  .img-box { border:2px dashed var(--border); border-radius:8px; padding:16px; text-align:center; cursor:pointer; min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; transition:border-color 0.2s; position:relative; }
+  .img-box:hover { border-color:var(--accent); }
+  .img-box.has-image { border-style:solid; border-color:var(--border); padding:4px; }
+  .img-box img { max-width:100%; max-height:250px; border-radius:6px; display:none; }
+  .img-box.has-image img { display:block; }
+  .img-box .label { font-size:12px; color:var(--text-muted); margin-top:6px; }
+  .img-box .icon { font-size:28px; }
+  .img-box.has-image .placeholder { display:none; }
+  textarea { width:100%; padding:10px 12px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; resize:vertical; font-family:inherit; line-height:1.5; }
+  textarea:focus { border-color:var(--accent); outline:none; }
+  .prompt-area { margin-bottom:16px; }
+  .prompt-area label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px; }
+  .btn { padding:10px 20px; border:none; border-radius:6px; font-size:14px; font-weight:600; cursor:pointer; transition:all 0.15s; }
+  .btn-run { background:var(--accent); color:#fff; width:100%; margin-bottom:12px; }
+  .btn-run:hover { background:var(--accent-hover); }
+  .btn-run:disabled { opacity:0.4; cursor:not-allowed; }
+  .btn-refine { background:var(--gold); color:#000; width:100%; }
+  .btn-refine:hover { opacity:0.9; }
+  .btn-refine:disabled { opacity:0.4; cursor:not-allowed; }
+  .output-area label { font-size:11px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px; }
+  .output-area textarea { min-height:200px; font-family:'SF Mono',Monaco,Consolas,monospace; font-size:11px; }
+  .status { font-size:12px; color:var(--text-muted); margin-bottom:8px; min-height:18px; }
+  .status.running { color:var(--accent); } .status.pass { color:var(--success); } .status.fail { color:var(--danger); } .status.error { color:var(--danger); }
+  .usage { font-size:10px; color:var(--text-muted); margin-top:8px; }
+  .verdict-bar { display:none; padding:12px; border-radius:8px; margin-bottom:12px; font-weight:600; font-size:14px; text-align:center; }
+  .verdict-bar.pass { display:block; background:rgba(76,204,136,0.1); color:var(--success); border:1px solid rgba(76,204,136,0.3); }
+  .verdict-bar.fail { display:block; background:rgba(238,85,85,0.1); color:var(--danger); border:1px solid rgba(238,85,85,0.3); }
+  .checks-list { margin-bottom:12px; }
+  .check-item { padding:4px 0; font-size:12px; display:flex; align-items:baseline; gap:6px; }
+  .check-item.pass { color:var(--success); } .check-item.fail { color:var(--danger); }
+  .check-detail { color:var(--text-muted); font-size:11px; }
+  .drift-score { font-size:13px; color:var(--accent); font-weight:600; margin-bottom:8px; }
+  .reasoning { font-size:11px; color:var(--text-muted); margin-bottom:8px; font-style:italic; }
+  .refine-panel { display:none; } .refine-panel.active { display:block; }
+  .refine-panel h3 { font-size:13px; color:var(--gold); margin-bottom:10px; }
+  .refine-instruction { margin-bottom:12px; padding:10px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; }
+  .refine-instruction label { font-size:10px; color:var(--gold); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:4px; }
+  .refine-instruction .text { font-size:12px; color:var(--text); line-height:1.5; }
+  .negatives { margin-bottom:12px; }
+  .neg-pill { display:inline-block; font-size:10px; padding:3px 8px; background:rgba(238,85,85,0.1); color:var(--danger); border:1px solid rgba(238,85,85,0.2); border-radius:12px; margin:2px; }
+
+  /* Deviation boxes */
+  .deviations-section { margin-bottom:12px; }
+  .deviations-section h4 { font-size:11px; color:var(--danger); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+  .deviation-item { display:flex; align-items:flex-start; gap:8px; padding:6px 8px; background:var(--surface-2); border:1px solid var(--border); border-radius:6px; margin-bottom:6px; font-size:11px; }
+  .deviation-item .dev-type { color:var(--danger); font-weight:600; white-space:nowrap; }
+  .deviation-item .dev-box { color:var(--accent); font-family:'SF Mono',monospace; font-size:10px; white-space:nowrap; }
+  .deviation-item .dev-fix { color:var(--text-muted); }
+
+  /* Annotated image */
+  .annotated-wrap { position:relative; display:inline-block; margin-bottom:12px; }
+  .annotated-wrap canvas { border-radius:6px; border:1px solid var(--border); max-width:100%; }
+
+  .history-item { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:10px; }
+  .history-item .round-label { font-size:11px; color:var(--gold); font-weight:600; margin-bottom:6px; }
+  .history-item .images-compare { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .history-item .images-compare img { width:100%; border-radius:6px; border:1px solid var(--border); }
+  .history-item .compare-label { font-size:9px; color:var(--text-dim); text-transform:uppercase; text-align:center; margin-bottom:2px; }
+  .history-item .mini-verdict { font-size:11px; font-weight:600; padding:4px 8px; border-radius:4px; display:inline-block; background:rgba(238,85,85,0.1); color:var(--danger); }
+  .history-item .mini-drift { font-size:10px; color:var(--text-muted); margin-left:8px; }
+  @media(max-width:800px) { .layout { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<h1>🔍 <span>QA Tester</span> — Spatial CAD Audit + Refinement</h1>
+<div class="layout">
+  <div class="panel">
+    <h2>📥 Input</h2>
+    <div class="images-row">
+      <div class="img-box" id="sketchBox" onclick="document.getElementById('sketchFile').click()">
+        <div class="placeholder"><div class="icon">✏️</div><div class="label">Sketch (Image 1)</div></div>
+        <img id="sketchPreview">
+        <input type="file" id="sketchFile" accept="image/*" hidden>
+      </div>
+      <div class="img-box" id="renderBox" onclick="document.getElementById('renderFile').click()">
+        <div class="placeholder"><div class="icon">💎</div><div class="label">Render (Image 2)</div></div>
+        <img id="renderPreview">
+        <input type="file" id="renderFile" accept="image/*" hidden>
+      </div>
+    </div>
+    <div class="prompt-area">
+      <label>QA Prompt</label>
+      <textarea id="qaPrompt" rows="8"></textarea>
+    </div>
+    <div class="prompt-area">
+      <label>Original Generation Prompt <span style="font-size:9px;color:var(--text-dim)">(for refinement)</span></label>
+      <textarea id="genPrompt" rows="4" placeholder="Paste the prompt used to generate the render. Required for refinement."></textarea>
+    </div>
+    <button class="btn btn-run" id="runBtn" onclick="runQA()" disabled>🔍 Run Spatial QA Audit</button>
+    <div class="status" id="status"></div>
+  </div>
+
+  <div class="panel">
+    <h2>📤 QA Result</h2>
+    <div class="verdict-bar" id="verdict"></div>
+    <div class="drift-score" id="driftScore"></div>
+    <div class="reasoning" id="reasoning"></div>
+
+    <!-- Annotated render with bounding boxes -->
+    <div class="annotated-wrap" id="annotatedWrap" style="display:none">
+      <canvas id="annotatedCanvas"></canvas>
+    </div>
+
+    <!-- Deviations with bounding boxes -->
+    <div class="deviations-section" id="deviationsSection" style="display:none">
+      <h4>📍 Spatial Deviations</h4>
+      <div id="deviationsList"></div>
+    </div>
+
+    <div class="checks-list" id="checksList"></div>
+
+    <div class="refine-panel" id="refinePanel">
+      <h3>🔧 Coordinate-Based Refinement</h3>
+      <div class="refine-instruction" id="refineInstrBox">
+        <label>Refinement Instruction (from QA)</label>
+        <div class="text" id="refineInstrText"></div>
+      </div>
+      <div class="negatives" id="negativesBox"></div>
+      <div class="prompt-area">
+        <label>Edit Refinement Override</label>
+        <textarea id="refineOverride" rows="4"></textarea>
+      </div>
+      <button class="btn btn-refine" id="refineBtn" onclick="runRefinement()" disabled>✨ Run Spatial Refinement</button>
+      <div class="status" id="refineStatus" style="margin-top:8px"></div>
+    </div>
+
+    <div class="output-area" style="margin-top:12px">
+      <label>Raw JSON</label>
+      <textarea id="output" rows="12" readonly></textarea>
+    </div>
+    <div class="usage" id="usage"></div>
+  </div>
+
+  <div class="panel full-width" id="historyPanel" style="display:none">
+    <h2>📜 Refinement History</h2>
+    <div id="historyList"></div>
+  </div>
+</div>
+
+<script>
+let sketchData = null, renderData = null, lastQaResult = null, refinementRound = 0, currentRenderData = null;
+let conversation = null; // stateful conversation for refinement chain
+
+const MAX_CONV_TURNS = 6;
+function trimConversation(conv) {
+  if (conv.length <= MAX_CONV_TURNS) return conv;
+  return [conv[0], conv[1], ...conv.slice(-2)];
+}
+
+const DEFAULT_QA_PROMPT = `You are a Senior Jewelry CAD Auditor performing Pixel-Precise Geometric Validation.
+
+Compare Image 1 (Sketch) and Image 2 (Render). You must identify ALL geometric deviations with spatial precision.
+
+STEP 1: SKETCH INVENTORY
+List every geometric primitive in Image 1 (lines, curves, points, shapes).
+
+STEP 2: SPATIAL DEVIATION DETECTION
+For EVERY deviation found in Image 2 that doesn't match Image 1:
+- Classify the deviation type
+- Provide a bounding box in [ymin, xmin, ymax, xmax] format (0-1000 scale, where 0,0 is top-left and 1000,1000 is bottom-right)
+- Describe the specific fix needed
+
+STEP 3: VERDICT
+- PASS: Render is a literal 1:1 geometric translation of the sketch.
+- FAIL: Any unauthorized additions, missing elements, or geometric drift.
+
+Respond in strict JSON only — no other text:
+{
+  "audit_steps": {
+    "sketch_primitives": ["list of geometric elements found in sketch"],
+    "geometric_drift_score": 0-100
+  },
+  "deviations": [
+    {
+      "type": "unauthorized_detail | missing_element | shape_drift | thickness_change | sharpness_loss",
+      "box_2d": [ymin, xmin, ymax, xmax],
+      "description": "what was found",
+      "fix": "specific correction instruction for this region"
+    }
+  ],
+  "result": "PASS" or "FAIL",
+  "pass": true or false,
+  "reasoning": "Blunt explanation",
+  "refinement_instruction": "STRICT OVERRIDE: Complete correction instruction including all spatial fixes"
+}`;
+
+document.getElementById('qaPrompt').value = DEFAULT_QA_PROMPT;
+
+document.getElementById('sketchFile').addEventListener('change', e => loadImage(e.target.files[0], 'sketch'));
+document.getElementById('renderFile').addEventListener('change', e => loadImage(e.target.files[0], 'render'));
+
+['sketchBox','renderBox'].forEach(id => {
+  const el = document.getElementById(id);
+  const type = id === 'sketchBox' ? 'sketch' : 'render';
+  el.addEventListener('dragover', e => { e.preventDefault(); el.style.borderColor='var(--accent)'; });
+  el.addEventListener('dragleave', () => { el.style.borderColor=''; });
+  el.addEventListener('drop', e => { e.preventDefault(); el.style.borderColor=''; if(e.dataTransfer.files[0]) loadImage(e.dataTransfer.files[0], type); });
+});
+
+function loadImage(file, type) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    const parts = dataUrl.split(',');
+    const mime = parts[0].match(/:(.*?);/)[1];
+    const b64 = parts[1];
+    if (type === 'sketch') {
+      sketchData = { base64: b64, mime, dataUrl };
+      document.getElementById('sketchPreview').src = dataUrl;
+      document.getElementById('sketchBox').classList.add('has-image');
+      conversation = null; refinementRound = 0; // reset state on new sketch
+    } else {
+      renderData = { base64: b64, mime, dataUrl };
+      currentRenderData = { base64: b64, mime, dataUrl };
+      document.getElementById('renderPreview').src = dataUrl;
+      document.getElementById('renderBox').classList.add('has-image');
+      conversation = null; refinementRound = 0; // reset state on new render
+    }
+    document.getElementById('runBtn').disabled = !(sketchData && (renderData || currentRenderData));
+  };
+  reader.readAsDataURL(file);
+}
+
+function parseQaJson(rawText) {
+  let text = rawText.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+  try { return JSON.parse(text); } catch(e) {}
+  const first = rawText.indexOf('{');
+  const last = rawText.lastIndexOf('}');
+  if (first !== -1 && last > first) {
+    try { return JSON.parse(rawText.substring(first, last + 1)); } catch(e2) {}
+  }
+  return null;
+}
+
+// ── Draw bounding boxes on render image ─────────────────────────────
+function drawAnnotatedImage(deviations) {
+  if (!currentRenderData || !deviations?.length) {
+    document.getElementById('annotatedWrap').style.display = 'none';
+    return;
+  }
+
+  const wrap = document.getElementById('annotatedWrap');
+  const canvas = document.getElementById('annotatedCanvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+
+  img.onload = () => {
+    const scale = Math.min(600 / img.width, 600 / img.height, 1);
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    const colors = ['#ee5555', '#ff8844', '#ffcc33', '#ff55aa', '#cc44ff'];
+
+    deviations.forEach((dev, i) => {
+      if (!dev.box_2d || dev.box_2d.length !== 4) return;
+      const [ymin, xmin, ymax, xmax] = dev.box_2d;
+
+      // Convert 0-1000 scale to pixel coordinates
+      const px = xmin / 1000 * canvas.width;
+      const py = ymin / 1000 * canvas.height;
+      const pw = (xmax - xmin) / 1000 * canvas.width;
+      const ph = (ymax - ymin) / 1000 * canvas.height;
+
+      const color = colors[i % colors.length];
+
+      // Draw box
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 3]);
+      ctx.strokeRect(px, py, pw, ph);
+      ctx.setLineDash([]);
+
+      // Semi-transparent fill
+      ctx.fillStyle = color + '20';
+      ctx.fillRect(px, py, pw, ph);
+
+      // Label
+      const label = (i + 1) + '. ' + (dev.type || '').replace(/_/g, ' ');
+      ctx.font = 'bold 11px -apple-system, sans-serif';
+      const tm = ctx.measureText(label);
+      const labelY = py > 18 ? py - 4 : py + ph + 14;
+      ctx.fillStyle = color;
+      ctx.fillRect(px, labelY - 12, tm.width + 8, 16);
+      ctx.fillStyle = '#000';
+      ctx.fillText(label, px + 4, labelY);
+    });
+
+    wrap.style.display = 'block';
+  };
+  img.src = currentRenderData.dataUrl;
+}
+
+// ── Build spatial refinement prompt from deviations ─────────────────
+function buildSpatialRefinement(qaResult) {
+  const deviations = qaResult?.deviations || [];
+  if (!deviations.length) return qaResult?.refinement_instruction || '';
+
+  let prompt = 'SPATIAL CORRECTIONS (coordinate-guided):\n\n';
+
+  deviations.forEach((dev, i) => {
+    const boxStr = dev.box_2d ? `[${dev.box_2d.join(',')}]` : 'no coordinates';
+    prompt += `${i + 1}. Region ${boxStr} (${(dev.type || '').replace(/_/g, ' ')}):\n`;
+    prompt += `   Issue: ${dev.description || 'deviation detected'}\n`;
+    prompt += `   Fix: ${dev.fix || 'correct to match sketch'}\n`;
+    prompt += `   LOCK: Everything outside this region must remain UNCHANGED.\n\n`;
+  });
+
+  prompt += 'GLOBAL RULES:\n';
+  prompt += '- Only modify the specific regions listed above.\n';
+  prompt += '- All areas outside bounding boxes are FROZEN — do not alter them.\n';
+  prompt += '- Match the sketch geometry exactly within each correction region.\n';
+
+  return prompt;
+}
+
+async function runQA() {
+  if (!sketchData || !currentRenderData) return;
+  const btn = document.getElementById('runBtn');
+  const status = document.getElementById('status');
+  btn.disabled = true;
+  status.className = 'status running';
+  status.textContent = '⏳ Running spatial QA audit...';
+  resetOutput();
+
+  const startTime = Date.now();
+  try {
+    const res = await fetch('/api/qa', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sketchBase64: sketchData.base64, sketchMimeType: sketchData.mime,
+        renderBase64: currentRenderData.base64, renderMimeType: currentRenderData.mime,
+        qaPrompt: document.getElementById('qaPrompt').value
+      })
+    });
+    const data = await res.json();
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    if (!res.ok) {
+      status.className = 'status error';
+      status.textContent = 'Error: ' + (data.error || res.statusText);
+      document.getElementById('output').value = JSON.stringify(data, null, 2);
+      btn.disabled = false; return;
+    }
+
+    document.getElementById('output').value = data.text || '';
+
+    const parsed = parseQaJson(data.text || '');
+    if (parsed) {
+      lastQaResult = parsed;
+      document.getElementById('output').value = JSON.stringify(parsed, null, 2);
+      displayQaResult(parsed, elapsed);
+    } else {
+      status.className = 'status error';
+      status.textContent = '⚠️ Could not parse JSON · ' + elapsed + 's — raw response shown below';
+    }
+
+    if (data.usage) {
+      const u = data.usage;
+      document.getElementById('usage').textContent = 'Tokens: ' + (u.totalTokenCount||'?') + ' total · ' + (u.thoughtsTokenCount||0) + ' thinking · ' + (u.candidatesTokenCount||0) + ' output';
+    }
+  } catch(e) {
+    status.className = 'status error';
+    status.textContent = '❌ ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+function displayQaResult(parsed, elapsed) {
+  const status = document.getElementById('status');
+  const passed = parsed.pass === true || parsed.result === 'PASS';
+
+  const v = document.getElementById('verdict');
+  v.className = 'verdict-bar ' + (passed ? 'pass' : 'fail');
+  v.textContent = passed ? '✅ PASS — Geometric Match' : '❌ FAIL — Deviations Detected';
+
+  const drift = parsed.audit_steps?.geometric_drift_score;
+  if (drift !== undefined) document.getElementById('driftScore').textContent = '📊 Geometric Drift: ' + drift + '/100';
+  if (parsed.reasoning) document.getElementById('reasoning').textContent = '💬 ' + parsed.reasoning;
+
+  // Draw bounding boxes on render
+  const deviations = parsed.deviations || [];
+  drawAnnotatedImage(deviations);
+
+  // Show deviations list
+  const devSection = document.getElementById('deviationsSection');
+  const devList = document.getElementById('deviationsList');
+  if (deviations.length > 0) {
+    devSection.style.display = 'block';
+    devList.innerHTML = deviations.map((d, i) => {
+      const boxStr = d.box_2d ? `[${d.box_2d.join(', ')}]` : '—';
+      return `<div class="deviation-item">
+        <span class="dev-type">${i+1}. ${(d.type||'').replace(/_/g,' ')}</span>
+        <span class="dev-box">📍 ${boxStr}</span>
+        <span class="dev-fix">${d.description || ''} → ${d.fix || ''}</span>
+      </div>`;
+    }).join('');
+  } else {
+    devSection.style.display = 'none';
+  }
+
+  // Legacy checks (if present)
+  const cl = document.getElementById('checksList');
+  if (parsed.checks?.length) {
+    cl.innerHTML = parsed.checks.map(c =>
+      '<div class="check-item ' + (c.pass ? 'pass' : 'fail') + '">' +
+      (c.pass ? '✅' : '❌') + ' <strong>' + c.name + '</strong>' +
+      (c.detail ? ' <span class="check-detail">— ' + c.detail + '</span>' : '') +
+      '</div>'
+    ).join('');
+  }
+
+  status.className = 'status ' + (passed ? 'pass' : 'fail');
+  status.textContent = (passed ? '✅ PASS' : '❌ FAIL') + ' · ' + elapsed + 's' +
+    (deviations.length ? ' · ' + deviations.length + ' spatial deviation' + (deviations.length > 1 ? 's' : '') : '');
+
+  // Refinement panel
+  const refPanel = document.getElementById('refinePanel');
+  if (!passed) {
+    refPanel.classList.add('active');
+
+    const instrText = parsed.refinement_instruction || 'No specific instruction provided.';
+    document.getElementById('refineInstrText').textContent = instrText;
+
+    // Build spatial refinement override from deviations
+    const spatialOverride = buildSpatialRefinement(parsed);
+    document.getElementById('refineOverride').value = spatialOverride || instrText;
+
+    // Hallucination pills from deviations
+    const hallucinations = deviations.filter(d => d.type === 'unauthorized_detail').map(d => d.description);
+    const negBox = document.getElementById('negativesBox');
+    negBox.innerHTML = hallucinations.length > 0
+      ? '<label style="font-size:10px;color:var(--danger);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;display:block">🚫 Hallucinations to Remove</label>' +
+        hallucinations.map(h => '<span class="neg-pill">' + h + '</span>').join('')
+      : '';
+
+    document.getElementById('refineBtn').disabled = !document.getElementById('genPrompt').value.trim();
+  } else {
+    refPanel.classList.remove('active');
+  }
+}
+
+async function runRefinement() {
+  const genPrompt = document.getElementById('genPrompt').value.trim();
+  if (!genPrompt) return alert('Paste the original generation prompt first.');
+  if (!sketchData) return alert('No sketch uploaded.');
+
+  refinementRound++;
+  const btn = document.getElementById('refineBtn');
+  const status = document.getElementById('refineStatus');
+  btn.disabled = true;
+  status.className = 'status running';
+  status.textContent = '✨ Generating spatially-corrected image (Round ' + refinementRound + ')...';
+
+  const refinementInstruction = document.getElementById('refineOverride').value.trim();
+
+  // ── Build stateful conversation ───────────────────────────────────
+  // Round 1: create conversation from scratch (sketch + original prompt → model response not available, so we start fresh with sketch + corrected prompt)
+  // Round 2+: append refinement turn to existing conversation
+
+  let contentsToSend;
+  let refineTurn;
+
+  if (!conversation) {
+    // First refinement — no prior conversation exists.
+    // Can't fake a model turn (requires thought_signature).
+    conversation = [
+      { role: 'user', parts: [
+        { text: genPrompt },
+        { inlineData: { mimeType: sketchData.mime, data: sketchData.base64 } }
+      ]}
+    ];
+    // First refinement includes render as reference in the correction turn
+    refineTurn = { role: 'user', parts: [
+      { text: 'Here is the render that was generated from the sketch above. It has geometric deviations that need fixing:\n\n' + refinementInstruction },
+      { inlineData: { mimeType: currentRenderData.mime, data: currentRenderData.base64 } }
+    ]};
+    contentsToSend = [...conversation, refineTurn];
+    conversation.push(refineTurn);
+  } else {
+    // Round 2+: real conversation with thought signatures from prior model responses
+    refineTurn = { role: 'user', parts: [{ text: refinementInstruction }] };
+    const trimmed = trimConversation(conversation);
+    contentsToSend = [...trimmed, refineTurn];
+    conversation.push(refineTurn);
+  }
+
+  const startTime = Date.now();
+  try {
+    const res = await fetch('/api/refine', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: contentsToSend })
+    });
+    const data = await res.json();
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    if (!res.ok || !data.images?.length) {
+      status.className = 'status error';
+      status.textContent = '❌ ' + (data.error || 'No image generated') + ' · ' + elapsed + 's';
+      btn.disabled = false; return;
+    }
+
+    // Add model response to conversation (refineTurn already pushed above)
+    const cleanParts = (data.modelParts || []).filter(p => !p.thought);
+    if (cleanParts.length) {
+      conversation.push({ role: 'model', parts: cleanParts });
+    }
+
+    const img = data.images[0];
+    const newDataUrl = 'data:' + img.mimeType + ';base64,' + img.data;
+    const prevRenderDataUrl = currentRenderData.dataUrl;
+    const prevQaResult = lastQaResult;
+
+    currentRenderData = { base64: img.data, mime: img.mimeType, dataUrl: newDataUrl };
+
+    addHistoryItem(refinementRound, prevRenderDataUrl, newDataUrl, prevQaResult, refinementInstruction);
+
+    document.getElementById('renderPreview').src = newDataUrl;
+    document.getElementById('renderBox').classList.add('has-image');
+
+    status.className = 'status pass';
+    const turnCount = conversation.length;
+    status.textContent = '✅ Refined · ' + elapsed + 's · ' + turnCount + ' conv turns · Click "Run Spatial QA Audit" to re-check';
+
+    document.getElementById('verdict').className = 'verdict-bar';
+    document.getElementById('refinePanel').classList.remove('active');
+    document.getElementById('annotatedWrap').style.display = 'none';
+    document.getElementById('deviationsSection').style.display = 'none';
+    lastQaResult = null;
+
+    if (data.usage) {
+      status.textContent += ' · ' + (data.usage.totalTokenCount||'?') + ' tokens';
+    }
+  } catch(e) {
+    status.className = 'status error';
+    status.textContent = '❌ ' + e.message;
+  }
+  btn.disabled = false;
+}
+
+function addHistoryItem(round, prevDataUrl, newDataUrl, qaResult, instruction) {
+  document.getElementById('historyPanel').style.display = 'block';
+  const list = document.getElementById('historyList');
+  const drift = qaResult?.audit_steps?.geometric_drift_score;
+  const devCount = qaResult?.deviations?.length || 0;
+
+  const div = document.createElement('div');
+  div.className = 'history-item';
+  div.innerHTML =
+    '<div class="round-label">Round ' + round + ' · ' + devCount + ' deviation' + (devCount !== 1 ? 's' : '') + ' fixed</div>' +
+    '<div class="images-compare">' +
+      '<div><div class="compare-label">Before (Failed)</div><img src="' + prevDataUrl + '"></div>' +
+      '<div><div class="compare-label">After (Refined)</div><img src="' + newDataUrl + '"></div>' +
+    '</div>' +
+    '<span class="mini-verdict">❌ FAIL</span>' +
+    (drift !== undefined ? '<span class="mini-drift">Drift: ' + drift + '/100</span>' : '') +
+    '<div style="font-size:10px;color:var(--text-dim);margin-top:6px;max-height:60px;overflow-y:auto;white-space:pre-wrap">' + (instruction||'').substring(0, 500) + '</div>';
+  list.prepend(div);
+}
+
+function resetOutput() {
+  document.getElementById('verdict').className = 'verdict-bar';
+  document.getElementById('driftScore').textContent = '';
+  document.getElementById('reasoning').textContent = '';
+  document.getElementById('checksList').innerHTML = '';
+  document.getElementById('output').value = '';
+  document.getElementById('usage').textContent = '';
+  document.getElementById('refinePanel').classList.remove('active');
+  document.getElementById('refineStatus').textContent = '';
+  document.getElementById('annotatedWrap').style.display = 'none';
+  document.getElementById('deviationsSection').style.display = 'none';
+}
+
+document.getElementById('genPrompt').addEventListener('input', () => {
+  document.getElementById('refineBtn').disabled = !document.getElementById('genPrompt').value.trim() || !lastQaResult;
+});
+</script>
+</body>
+</html>
