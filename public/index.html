@@ -239,7 +239,7 @@
   <div class="global-row"><label style="align-self:flex-start;padding-top:8px;">Core Prompt</label></div>
   <div class="master-prompt-area">
     <textarea id="masterPrompt" rows="6" placeholder="Write the core prompt with {category_module} where you want category-specific text injected.&#10;&#10;Example: A professional macro product photograph of a luxury jewelry piece.&#10;> Subject: {category_module}&#10;Materials: 18k {metal} with a {finish} finish..."></textarea>
-    <div class="var-hint">Variables: <code>{metal}</code> <code>{finish}</code> <code>{hook_type}</code> <code>{category_module}</code> — <code>{category_module}</code> is replaced with the category text below.</div>
+    <div class="var-hint">Variables: <code>{category}</code> <code>{metal}</code> <code>{finish}</code> <code>{hook_type}</code> <code>{category_module}</code> — <code>{category}</code> = selected category name, <code>{category_module}</code> = category-specific instructions below.</div>
   </div>
   <div class="cat-section-label"><label>Category Modules</label><span class="cat-section-hint">Injected after core prompt · Per-category instructions</span></div>
   <div class="cat-modules" id="catModulesContainer">
@@ -1572,7 +1572,7 @@ const DEFAULT_CORE_PROMPT = `4K macro product photograph, soft diffused overhead
 
 Exact 1:1 match to the attached sketch. Every internal line is a real carved feature — engravings, grooves, ridges, bezels, seams. Reproduce them all with visible depth. Raised elements get full 3D volume, never flat printed texture. Add nothing not drawn. Remove nothing drawn.
 
-{category_module} in {metal}, {finish} finish.
+A {category}. {category_module} in {metal}, {finish} finish.
 
 Sketch-reading rules: Small circles are stone settings — count exactly. Hatched areas are textured surfaces. Thicker lines indicate primary structural edges; thinner lines indicate secondary detail like engravings or inlay borders.
 
